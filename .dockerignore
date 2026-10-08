@@ -1,0 +1,42 @@
+# CyberShield — Docker build context .dockerignore (applies at the repo root,
+# the compose build context for the api image).
+#
+# Keeps the context small and — critically — keeps secrets and unrelated large
+# trees out of the builder. The Dockerfile only COPYs specific paths; anything
+# listed here is excluded before the context is even sent.
+
+# Python caches / tooling
+**/__pycache__/
+**/*.py[cod]
+*.pyo
+.venv/
+.eggs/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Test suites — never enter the runtime image
+backend/tests/
+tests/
+
+# Large unrelated trees (clients, docs, reports)
+client/
+docs/
+scripts/
+
+# Container metadata and orchestration that doesn't belong in the image.
+# The Dockerfile needs infrastructure/docker/{entrypoint.sh,wait-for-db.py} —
+# keep them, drop the rest.
+infrastructure/.env*
+infrastructure/nginx/
+infrastructure/database/
+infrastructure/docker-compose.yml
+
+# Any .env or .env.* anywhere (secrets templates need not reach the builder)
+**/.env*
+.git/
+.gitignore

@@ -1,0 +1,14 @@
+# CyberShield backend - machine learning dependencies
+#
+# Install with:  pip install -r requirements.txt -r requirements-ml.txt
+#
+# The model is additive evidence only. Without scikit-learn installed the risk
+# engine simply has one fewer signal source; verdicts remain computable from
+# rules, reputation and antivirus signals.
+#
+# See docs/project-report/ml-methodology.md for dataset provenance, licensing,
+# validation metrics and the known false-positive rate.
+
+scikit-learn>=1.5,<2.0
+joblib>=1.4,<2.0
+numpy>=1.26,<3.0

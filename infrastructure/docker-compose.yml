@@ -1,0 +1,194 @@
+# =============================================================================
+# CyberShield — self-hosted deployment stack (Docker Compose)
+# =============================================================================
+# Services:
+#   db      PostgreSQL 16 (named volume, healthchecked)
+#   redis   Redis 7      (rate limiting backend + future durable queue)
+#   api     the backend image, built from the repo root (build context "..")
+#   worker  OPTIONAL separate queue consumer — profile "worker".
+#           NOT operational yet: app/workers/queue.py only implements the
+#           in-process asyncio queue today (no __main__, no Redis consumer),
+#           so USE_REDIS_QUEUE MUST stay "false". The service is scaffolded for
+#           the day the Redis consumer lands upstream.
+#   clamav  OPTIONAL ClamAV clamd — profile "scanner". Needed for the health
+#           probe to report "ok" (it never fakes a healthy scanner).
+#   nginx   reverse proxy + TLS termination — profile "proxy".
+#
+# Secrets are env-only: required values are read from infrastructure/.env
+# (auto-loaded by compose) or the process environment. The API also refuses to
+# boot in production without an explicit SECRET_KEY (app/core/config.py).
+#
+# Quick start:
+#   scripts/generate-secrets.sh                      # print fresh secrets
+#   cp infrastructure/.env.example infrastructure/.env && <fill in>
+#   docker compose --profile proxy --profile scanner up -d --build
+# =============================================================================
+
+name: cybershield
+
+# -----------------------------------------------------------------------------
+# Shared config for every container built from the backend image.
+# -----------------------------------------------------------------------------
+x-api: &api
+  image: cybershield-api:local
+  environment: &api-env
+    # --- core ---------------------------------------------------------------
+    ENVIRONMENT: ${ENVIRONMENT:-production}
+    DEBUG: "false"
+    DOCS_ENABLED: "true"
+    # The canonical non-secret surface is backend/.env.example; only
+    # deployment-specific variables are pinned here. env_file is NOT used:
+    # .env.example ships placeholders (bare `SECRET_KEY=`, a SQLite
+    # DATABASE_URL) that would override these values instead of backfilling.
+
+    # --- database / redis ---------------------------------------------------
+    DATABASE_URL: postgresql+asyncpg://cybershield:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infrastructure/.env}@db:5432/cybershield
+    REDIS_URL: redis://redis:6379/0
+
+    # --- secrets ------------------------------------------------------------
+    # A per-process generated SECRET_KEY would invalidate every token on
+    # restart and differ between replicas. It must be pinned per environment.
+    SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in infrastructure/.env}
+    # 64 hex chars = 32 bytes of key material, SHA-256-wrapped by the app into
+    # its AES-256-GCM quarantine key. NEVER rotate: quarantined blobs are
+    # encrypted at rest with it and become unreadable if it changes.
+    QUARANTINE_ENCRYPTION_KEY: ${QUARANTINE_ENCRYPTION_KEY:?set QUARANTINE_ENCRYPTION_KEY in infrastructure/.env}
+
+    # --- scanning / queue ---------------------------------------------------
+    # In-process asyncio scan queue: the default and the only implemented
+    # backend (see infrastructure/README.md). Do NOT set true — no Redis
+    # consumer exists upstream yet, and scans would enqueue and never run.
+    USE_REDIS_QUEUE: "false"
+    # ClamAV is optional; the service name is used so the "scanner" profile's
+    # clamd (if running) is found with zero configuration.
+    CLAMAV_HOST: clamav
+    CLAMAV_PORT: "3310"
+
+    # --- proxy topology -----------------------------------------------------
+    # The stack is fronted by nginx (or any proxy) that overwrites
+    # X-Forwarded-For/X-Forwarded-Proto. Required so rate limiting and audit
+    # observe the real client instead of the proxy address.
+    TRUST_PROXY_HEADERS: "true"
+
+    # --- storage / http -----------------------------------------------------
+    STORAGE_ROOT: /data
+    CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+  volumes:
+    # Persist uploads, encrypted quarantine blobs and temp files across
+    # container rebuilds. This volume MUST outlive the api container.
+    - cybershield-data:/data
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+  stop_grace_period: 30s
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cybershield
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infrastructure/.env}
+      POSTGRES_DB: cybershield
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+    # Uncomment only for host-side pg_dump/pg_restore or psql debugging; bind
+    # to localhost and secure with a strong POSTGRES_PASSWORD.
+    # ports:
+    #   - "127.0.0.1:5432:5432"
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 — rate limiting; appendonly on for the future durable queue.
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # API — built from infrastructure/docker/Dockerfile (context = repo root).
+  # ---------------------------------------------------------------------------
+  api:
+    <<: *api
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile
+    ports:
+      # Host-local binding for curl/debug (`curl http://127.0.0.1:8000/...`).
+      # Remove this mapping to force all client traffic through nginx.
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      # stdlib urllib — no curl/wget dependency in the slim image.
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Optional Redis queue consumer (same image, different command).
+  # ---------------------------------------------------------------------------
+  worker:
+    <<: *api
+    profiles: ["worker"]
+    # The entrypoint runs `alembic upgrade head` first, then this command.
+    # NOTE: app/workers/queue.py currently ships ONLY the in-process queue and
+    # has no __main__ block, so this command is a placeholder. Keep the
+    # `worker` profile disabled and USE_REDIS_QUEUE=false until the upstream
+    # Redis consumer exists.
+    command: ["python", "-m", "app.workers.queue"]
+
+  # ---------------------------------------------------------------------------
+  # Optional ClamAV antivirus daemon (clamd over TCP on :3310).
+  # ---------------------------------------------------------------------------
+  clamav:
+    profiles: ["scanner"]
+    image: clamav/clamav:stable
+    volumes:
+      - clamav-db:/var/lib/clamav
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Reverse proxy / TLS termination.
+  # ---------------------------------------------------------------------------
+  nginx:
+    profiles: ["proxy"]
+    image: nginx:1.27-alpine
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Populated by the certbot flow described in infrastructure/nginx/README.md.
+      - certbot-conf:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  cybershield-data:
+  redisdata:
+  clamav-db:
+  certbot-conf:
+  certbot-www:

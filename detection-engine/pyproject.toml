@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "detection-engine"
+version = "1.2.0"
+description = "CyberShield detection engine: modular, explainable threat analysis for URLs, files, email, APKs and images."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "CyberShield project" }]
+keywords = ["security", "phishing", "malware-analysis", "yara", "ssrf", "threat-intelligence"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+]
+
+# The core engine is deliberately dependency-light: the URL, domain, phishing and
+# file-analysis paths import nothing outside the standard library.  Everything
+# below is optional, and every optional import degrades into an explicit
+# "coverage not applied" finding rather than an import error.
+dependencies = []
+
+[project.optional-dependencies]
+# Outbound HTTP for URL analysis.
+network = ["httpx>=0.27", "dnspython>=2.6"]
+# Our own YARA rule set.
+yara = ["yara-python>=4.3"]
+# Antivirus signatures.
+clamav = ["python-clamd>=0.4"]
+# Structural document parsing.
+documents = ["pypdf>=4.2", "python-docx>=1.1", "openpyxl>=3.1", "python-pptx>=0.6"]
+# APK analysis.
+apk = ["androguard>=4.1"]
+# Image metadata and OCR.
+images = ["Pillow>=10.3", "exifread>=3.0"]
+# Machine-learned URL scoring.
+ml = ["scikit-learn>=1.4", "numpy>=1.26", "joblib>=1.3"]
+# Certificate parsing for TLS analysis.
+crypto = ["cryptography>=42.0"]
+# Type detection beyond our built-in signature table.
+magic = ["python-magic>=0.4.27"]
+# Everything, for development and CI.
+all = [
+    "httpx>=0.27", "dnspython>=2.6", "yara-python>=4.3", "python-clamd>=0.4",
+    "pypdf>=4.2", "python-docx>=1.1", "openpyxl>=3.1", "python-pptx>=0.6",
+    "androguard>=4.1", "Pillow>=10.3", "exifread>=3.0",
+    "scikit-learn>=1.4", "numpy>=1.26", "joblib>=1.3",
+    "cryptography>=42.0", "python-magic>=0.4.27",
+]
+
+[project.scripts]
+cybershield-scan = "detection_engine.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["detection_engine*"]
+
+[tool.setuptools.package-data]
+detection_engine = ["rules/*.yar", "rules/index.json", "ml/models/*.joblib", "ml/data/*.csv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
