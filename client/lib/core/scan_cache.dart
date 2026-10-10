@@ -54,7 +54,7 @@ class ScanCacheEntry {
 }
 
 class ScanCache {
-  ScanCache({String? baseDir}) : _baseDir = baseDir;
+  ScanCache({this._baseDir});
 
   static const int _maxEntries = 4000;
 
@@ -64,8 +64,8 @@ class ScanCache {
   bool get isLoaded => _entries != null;
 
   Future<File> _file() async {
-    final dir = _baseDir ?? await getApplicationSupportDirectory();
-    return File('${dir.path}/scan_cache.json');
+    final dirPath = _baseDir ?? (await getApplicationSupportDirectory()).path;
+    return File('$dirPath/scan_cache.json');
   }
 
   Future<Map<String, ScanCacheEntry>> _load() async {
@@ -142,11 +142,11 @@ class ScanCache {
   }
 }
 
-/// SHA-256 of a file, streamed in bounded 1 MiB chunks so huge files never
-/// load fully into memory (respects the 100 MiB upload ceiling).
+/// SHA-256 of a file, streamed in bounded 1 MiB chunks so large files never
+/// load fully into memory (and to stay gentle on battery I/O).
 Future<String> sha256OfFile(File file) async {
-  final digest = AccumulatorSink<Digest>();
-  final input = sha256.startChunkedConversion(digest);
+  final sink = _DigestSink();
+  final input = sha256.startChunkedConversion(sink);
   final raf = await file.open();
   try {
     while (true) {
@@ -158,5 +158,16 @@ Future<String> sha256OfFile(File file) async {
     await raf.close();
     input.close();
   }
-  return digest.events.single.toString();
+  return sink.digest.toString();
+}
+
+/// Collects the single [Digest] a hashing converter emits.
+class _DigestSink implements Sink<Digest> {
+  Digest? digest;
+
+  @override
+  void add(Digest data) => digest = data;
+
+  @override
+  void close() {}
 }

@@ -7,15 +7,20 @@ import '../intel/intel_screen.dart';
 import '../profile/profile_screen.dart';
 import '../quarantine/quarantine_screen.dart';
 import '../scan/scan_hub_screen.dart';
+import '../security/security_screen.dart';
 
 /// Root shell for the whole app (this build has no login screen, so the shell
 /// is the app's front door).
 ///
-/// - Wide layouts (>= 860dp): an antivirus-style `NavigationRail` with a brand
-///   header and every section listed.
-/// - Narrow/mobile layouts: a 5-destination Material 3 `NavigationBar` with
-///   the secondary sections (Threat Intel, Apps, Profile) tucked behind a
-///   "More" bottom sheet, so the bar never crowds a phone display.
+/// Mobile-first layout, per product spec:
+/// - Narrow (< 600dp): a 5-item Material 3 `NavigationBar` with the primary
+///   destinations — Home, Scan, History, Security, Settings. Secondary tools
+///   (Quarantine, Threat Intel, Apps) live on the Security screen and are
+///   pushed as routes, so the bar never crowds a phone display.
+/// - Tablet (600–1024dp): the same five entries; content renders in two
+///   columns (see the Home / Scan screens' own breakpoints).
+/// - Desktop (>= 1024dp): a `NavigationRail` lists every section including
+///   the secondary tools.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -24,55 +29,30 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  /// Pages indexed for the rail; the rail lists every section as destinations.
+  static const int home = 0;
+  static const int scan = 1;
+  static const int history = 2;
+  static const int security = 6;
+  static const int settings = 7;
+
+  /// Bottom-bar order on narrow layouts (the five primary destinations).
+  static const List<int> narrowPages = [home, scan, history, security, settings];
+
   int _index = 0;
   int _scanTab = 0;
-
-  /// Index of the "More" slot on the narrow bottom bar.
-  static const int _moreSlot = 4;
 
   void _openScanTab(int tab) {
     setState(() {
       _scanTab = tab;
-      _index = 1;
+      _index = scan;
     });
-  }
-
-  Future<void> _openMoreSheet() async {
-    final selected = await showModalBottomSheet<int>(
-      context: context,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.travel_explore_outlined),
-              title: const Text('Threat Intel'),
-              onTap: () => Navigator.of(context).pop(4),
-            ),
-            ListTile(
-              leading: const Icon(Icons.apps_outlined),
-              title: const Text('Apps'),
-              onTap: () => Navigator.of(context).pop(5),
-            ),
-            ListTile(
-              leading: const Icon(Icons.person_outline_rounded),
-              title: const Text('Profile'),
-              onTap: () => Navigator.of(context).pop(6),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (selected != null && mounted) {
-      setState(() => _index = selected);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width >= 860;
+    final width = MediaQuery.sizeOf(context).width;
+    final desktop = width >= 1024;
     final pages = <Widget>[
       DashboardScreen(onOpenScan: _openScanTab),
       ScanHubScreen(tabIndex: _scanTab),
@@ -80,44 +60,50 @@ class _AppShellState extends State<AppShell> {
       const QuarantineScreen(),
       const IntelScreen(),
       const AppsScreen(),
+      const SecurityScreen(),
       const ProfileScreen(),
     ];
 
     const railDestinations = [
-      NavigationDestination(
+      NavigationRailDestination(
         icon: Icon(Icons.shield_outlined),
         selectedIcon: Icon(Icons.shield_rounded),
-        label: 'Status',
+        label: Text('Home'),
       ),
-      NavigationDestination(
+      NavigationRailDestination(
         icon: Icon(Icons.radar_rounded),
         selectedIcon: Icon(Icons.radar_rounded),
-        label: 'Scan',
+        label: Text('Scan'),
       ),
-      NavigationDestination(
+      NavigationRailDestination(
         icon: Icon(Icons.history_outlined),
         selectedIcon: Icon(Icons.history_rounded),
-        label: 'History',
+        label: Text('History'),
       ),
-      NavigationDestination(
+      NavigationRailDestination(
         icon: Icon(Icons.health_and_safety_outlined),
         selectedIcon: Icon(Icons.health_and_safety_rounded),
-        label: 'Quarantine',
+        label: Text('Quarantine'),
       ),
-      NavigationDestination(
+      NavigationRailDestination(
         icon: Icon(Icons.travel_explore_outlined),
         selectedIcon: Icon(Icons.travel_explore_rounded),
-        label: 'Threat Intel',
+        label: Text('Threat Intel'),
       ),
-      NavigationDestination(
+      NavigationRailDestination(
         icon: Icon(Icons.apps_outlined),
         selectedIcon: Icon(Icons.apps_rounded),
-        label: 'Apps',
+        label: Text('Apps'),
       ),
-      NavigationDestination(
-        icon: Icon(Icons.person_outline_rounded),
-        selectedIcon: Icon(Icons.person_rounded),
-        label: 'Profile',
+      NavigationRailDestination(
+        icon: Icon(Icons.security_rounded),
+        selectedIcon: Icon(Icons.security_rounded),
+        label: Text('Security'),
+      ),
+      NavigationRailDestination(
+        icon: Icon(Icons.settings_outlined),
+        selectedIcon: Icon(Icons.settings_rounded),
+        label: Text('Settings'),
       ),
     ];
 
@@ -125,7 +111,7 @@ class _AppShellState extends State<AppShell> {
       NavigationDestination(
         icon: Icon(Icons.shield_outlined),
         selectedIcon: Icon(Icons.shield_rounded),
-        label: 'Status',
+        label: 'Home',
       ),
       NavigationDestination(
         icon: Icon(Icons.radar_rounded),
@@ -138,20 +124,20 @@ class _AppShellState extends State<AppShell> {
         label: 'History',
       ),
       NavigationDestination(
-        icon: Icon(Icons.health_and_safety_outlined),
-        selectedIcon: Icon(Icons.health_and_safety_rounded),
-        label: 'Quarantine',
+        icon: Icon(Icons.security_rounded),
+        selectedIcon: Icon(Icons.security_rounded),
+        label: 'Security',
       ),
       NavigationDestination(
-        icon: Icon(Icons.more_horiz_rounded),
-        selectedIcon: Icon(Icons.more_horiz_rounded),
-        label: 'More',
+        icon: Icon(Icons.settings_outlined),
+        selectedIcon: Icon(Icons.settings_rounded),
+        label: 'Settings',
       ),
     ];
 
     final body = IndexedStack(index: _index, children: pages);
 
-    if (wide) {
+    if (desktop) {
       final scheme = Theme.of(context).colorScheme;
       return Scaffold(
         body: Row(
@@ -203,13 +189,7 @@ class _AppShellState extends State<AppShell> {
               ),
               labelType: NavigationRailLabelType.all,
               groupAlignment: -0.9,
-              destinations: railDestinations
-                  .map((d) => NavigationRailDestination(
-                        icon: d.icon,
-                        selectedIcon: d.selectedIcon,
-                        label: Text(d.label),
-                      ))
-                  .toList(),
+              destinations: railDestinations,
             ),
             const VerticalDivider(width: 1),
             Expanded(child: body),
@@ -218,17 +198,12 @@ class _AppShellState extends State<AppShell> {
       );
     }
 
+    final barSlot = narrowPages.indexOf(_index);
     return Scaffold(
       body: body,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index > 3 ? _moreSlot : _index,
-        onDestinationSelected: (i) {
-          if (i == _moreSlot) {
-            _openMoreSheet();
-          } else {
-            setState(() => _index = i);
-          }
-        },
+        selectedIndex: barSlot < 0 ? 0 : barSlot,
+        onDestinationSelected: (i) => setState(() => _index = narrowPages[i]),
         destinations: narrowDestinations,
       ),
     );

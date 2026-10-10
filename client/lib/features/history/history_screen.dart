@@ -5,10 +5,13 @@ import 'package:intl/intl.dart';
 
 import '../../app.dart';
 import '../../core/api_exception.dart';
+import '../../core/app_errors.dart';
 import '../../core/models/enums.dart';
 import '../../core/models/scan.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/signed_out_state.dart';
 import '../../widgets/verdict_chip.dart';
+import '../auth/sign_in_sheet.dart';
 import '../report/report_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -78,7 +81,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.message;
+        _error = friendlyAppError(e, signedIn: session.isAuthenticated);
         _loading = false;
       });
     } catch (_) {
@@ -122,12 +125,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      messenger.showSnackBar(SnackBar(
+          content: Text(friendlyAppError(e, signedIn: true))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final session = AppScope.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('History'),
@@ -139,14 +144,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _filterBar(),
-          const Divider(height: 1),
-          Expanded(child: _buildList()),
-          _paginationBar(),
-        ],
-      ),
+      body: !session.isAuthenticated
+          ? SignedOutState(
+              title: 'Sign in to view scan history',
+              message: 'Your scan history is stored per account on the '
+                  'CyberShield service.',
+              onSignIn: () => showSignInSheet(context),
+            )
+          : Column(
+              children: [
+                _filterBar(),
+                const Divider(height: 1),
+                Expanded(child: _buildList()),
+                _paginationBar(),
+              ],
+            ),
     );
   }
 

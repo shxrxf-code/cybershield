@@ -48,7 +48,6 @@ class ScanProgress {
     this.threatsDetected = 0,
     this.directoriesScanned = 0,
     this.currentItem,
-    this.shouldDetect = false,
     this.phase = ScanPhase.idle,
     this.paused = false,
   });

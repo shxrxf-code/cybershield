@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/api_client.dart';
 import '../../core/api_exception.dart';
+import '../../core/app_errors.dart';
 import '../../core/config.dart';
 import '../../core/models/scan.dart';
+import '../../core/scan_state.dart';
 import '../report/report_screen.dart';
 import 'async_scan.dart';
 import 'scan_submit_section.dart';
@@ -30,10 +32,20 @@ class _FileScanFormState extends State<FileScanForm> {
   PlatformFile? _selected;
   bool _quick = false;
   bool _asyncMode = false;
-  bool _busy = false;
+  final SecurityScan _scan = SecurityScan();
   bool _showAdvanced = false;
 
+  /// The submit/pick/option controls all freeze while the central scan state
+  /// machine is running — one source of truth for the animated button too.
+  bool get _busy => _scan.isRunning;
+
   bool get _isApk => widget.kind == FileScanKind.apk;
+
+  @override
+  void dispose() {
+    _scan.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +247,7 @@ class _FileScanFormState extends State<FileScanForm> {
         ScanSubmitSection(
           quick: _quick,
           asyncMode: _asyncMode,
-          busy: _busy,
+          phase: _scan.phase,
           submitLabel: isApk ? 'Scan APK' : 'Scan file',
           onSubmit: _submit,
           onQuickChanged: (v) => setState(() => _quick = v),
@@ -347,12 +359,13 @@ class _FileScanFormState extends State<FileScanForm> {
               Text('The file exceeds the 100 MiB upload limit.')));
       return;
     }
-    setState(() => _busy = true);
+    _scan.start();
     final options = _isApk ? _apkOptions : _fileOptions;
     options.quick = _quick;
     final endpoint = _isApk ? '/api/v1/scan/apk' : '/api/v1/scan/file';
     try {
       if (_asyncMode) {
+        _scan.setAnalyzing();
         await submitAsyncAndOpenReport(context,
             submit: () => session.api.postMultipart(
                   endpoint,
@@ -363,7 +376,9 @@ class _FileScanFormState extends State<FileScanForm> {
                   ],
                   query: const {'async': 'true'},
                 ));
+        _scan.complete();
       } else {
+        _scan.setAnalyzing();
         final data = await session.api.postMultipart(
           endpoint,
           parts: [
@@ -373,6 +388,7 @@ class _FileScanFormState extends State<FileScanForm> {
         );
         final report = ScanReport.fromFileResponse(
             Map<String, dynamic>.from(data as Map));
+        _scan.complete();
         if (!mounted) return;
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -381,9 +397,13 @@ class _FileScanFormState extends State<FileScanForm> {
       }
     } on ApiException catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      _scan.fail(friendlyAppError(e, signedIn: session.isAuthenticated));
+      messenger.showSnackBar(
+          SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
+    } catch (_) {
+      if (!mounted) return;
+      _scan.fail(offlineMessage);
+      messenger.showSnackBar(const SnackBar(content: Text(offlineMessage)));
     }
   }
 }

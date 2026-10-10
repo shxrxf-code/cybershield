@@ -9,7 +9,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'app_errors.dart';
-import 'dashboard.dart' show DashboardStats;
+import 'models/dashboard.dart' show DashboardStats;
 
 enum ProtectionStatus {
   initializing,

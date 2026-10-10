@@ -8,9 +8,13 @@ import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/api_client.dart';
 import '../../core/api_exception.dart';
+import '../../core/app_errors.dart';
 import '../../core/config.dart';
 import '../../core/models/enums.dart';
 import '../../core/models/scan.dart';
+import '../../core/scan_state.dart';
+import '../../widgets/scan_button.dart';
+import '../../widgets/scan_shield_animation.dart';
 import '../../widgets/verdict_style.dart';
 import '../report/report_screen.dart';
 
@@ -81,36 +85,48 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
   _ScanPhase _phase = _ScanPhase.idle;
   String? _folderName;
   int _skippedTooLarge = 0;
-  int _current = 0;
   String _currentName = '';
   bool _stopRequested = false;
   String? _stoppedReason;
   int? _retryAfterSeconds;
   final List<_Outcome> _outcomes = [];
 
+  /// Central scan state machine — the button, the progress card and the
+  /// terminal resolution all read from this one source of truth.
+  final SecurityScan _scan = SecurityScan();
+
+  @override
+  void dispose() {
+    _scan.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _introCard(scheme),
-        const SizedBox(height: 14),
-        if (_phase != _ScanPhase.idle) ..._progressAndResults(),
-        if (_phase == _ScanPhase.idle || _phase == _ScanPhase.done) ...[
+    return ListenableBuilder(
+      listenable: _scan,
+      builder: (context, _) => ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _introCard(scheme),
           const SizedBox(height: 14),
-          _sourceCard(scheme),
+          if (_phase != _ScanPhase.idle) ..._progressAndResults(),
+          if (_phase == _ScanPhase.idle || _phase == _ScanPhase.done) ...[
+            const SizedBox(height: 14),
+            _sourceCard(scheme),
+          ],
+          if (_phase == _ScanPhase.idle ||
+              _phase == _ScanPhase.done) ...[
+            const SizedBox(height: 14),
+            _optionsCard(scheme),
+          ],
+          if (_phase == _ScanPhase.idle) ...[
+            const SizedBox(height: 14),
+            _startSection(scheme),
+          ],
         ],
-        if (_phase == _ScanPhase.idle ||
-            _phase == _ScanPhase.done) ...[
-          const SizedBox(height: 14),
-          _optionsCard(scheme),
-        ],
-        if (_phase == _ScanPhase.idle) ...[
-          const SizedBox(height: 14),
-          _startSection(scheme),
-        ],
-      ],
+      ),
     );
   }
 
@@ -187,6 +203,7 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
                 final wantFolder = newSelection.first;
                 if (wantFolder == _useFolder) return;
                 _useFolder = wantFolder;
+                _scan.reset();
                 _folderPath = null;
                 _picked = null;
                 _queued = null;
@@ -295,6 +312,8 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
   Widget _startSection(ColorScheme scheme) {
     final queued = _queued;
     final canStart = queued != null && queued.isNotEmpty;
+    final buttonPhase =
+        _phase == _ScanPhase.idle ? _scan.phase : ScanPhase.idle;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -311,16 +330,14 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
                   ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
-            FilledButton.icon(
+            ScanButton(
+              phase: buttonPhase,
               onPressed: canStart ? _runScan : null,
-              icon: const Icon(Icons.shield_outlined),
-              label: Text(canStart
+              label: canStart
                   ? 'Scan ${queued.length} files'
-                  : 'Scan device files'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 14),
-              ),
+                  : 'Scan device files',
+              icon: Icons.shield_outlined,
+              expanded: true,
             ),
           ],
         ),
@@ -331,9 +348,9 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
   List<Widget> _progressAndResults() {
     final scheme = Theme.of(context).colorScheme;
     if (_phase == _ScanPhase.scanning || _phase == _ScanPhase.collecting) {
-      final total = _phase == _ScanPhase.collecting
-          ? null
-          : (_queued?.length ?? 0);
+      final fraction = _scan.progress.fraction;
+      final scanning =
+          _phase == _ScanPhase.scanning && _scan.phase.isRunning;
       return [
         Card(
           child: Padding(
@@ -341,25 +358,65 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _phase == _ScanPhase.collecting
-                      ? 'Reading folder…'
-                      : 'Scanning files…',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                Row(
+                  children: [
+                    ScanShieldAnimation(
+                      size: 56,
+                      progress: fraction,
+                      animating: true,
+                      semanticsLabel: 'Scanning',
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _phase == _ScanPhase.collecting
+                                ? 'Reading folder…'
+                                : scanning
+                                    ? '${_scan.phase.label}…'
+                                    : 'Scanning files…',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 2),
+                          if (_scan.progress.filesQueued != null)
+                            Text(
+                              '${_scan.progress.filesProcessed} / '
+                              '${_scan.progress.filesQueued} files · '
+                              '${_scan.progress.threatsDetected} flagged',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: scheme.onSurfaceVariant),
+                            )
+                          else
+                            Text(
+                              'Files discovered so far: '
+                              '${_scan.progress.filesProcessed}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: scheme.onSurfaceVariant),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                if (total != null && total > 0) ...[
+                const SizedBox(height: 12),
+                if (fraction != null) ...[
                   LinearProgressIndicator(
-                    value: (_current / total).clamp(0.0, 1.0),
+                    value: fraction,
                     minHeight: 6,
                     borderRadius: BorderRadius.circular(3),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '$_current / $total · $_currentName',
+                    _scan.progress.currentItem ?? _currentName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context)
@@ -370,22 +427,27 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
                 ] else
                   const LinearProgressIndicator(minHeight: 6),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    if (_phase == _ScanPhase.scanning)
+                if (_phase == _ScanPhase.scanning)
+                  Row(
+                    children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => setState(() => _stopRequested = true),
+                          onPressed: () =>
+                              setState(() => _stopRequested = true),
                           icon: const Icon(Icons.stop_rounded),
                           label: const Text('Stop'),
                         ),
-                      )
-                    else
-                      const Expanded(
-                        child: Text(''),
                       ),
-                  ],
-                ),
+                      const SizedBox(width: 10),
+                      Text(
+                        _scan.elapsedLabel,
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelMedium
+                            ?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -593,6 +655,7 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
   // ------------------------------------------------------------------
 
   Future<void> _chooseSource() async {
+    _scan.reset();
     if (_useFolder) {
       await _pickFolder();
     } else {
@@ -721,28 +784,29 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
 
     setState(() {
       _phase = _ScanPhase.scanning;
-      _current = 0;
       _outcomes.clear();
       _stopRequested = false;
       _stoppedReason = null;
       _retryAfterSeconds = null;
     });
+    _scan.start();
+    _scan.beginScanning(queuedTotal: files.length);
 
     final options = FileScanOptions(quick: _quick, quarantine: _quarantine);
 
     for (var i = 0; i < files.length && !_stopRequested; i++) {
       final file = files[i];
-      setState(() {
-        _current = i + 1;
-        _currentName = file.name;
-      });
+      _scan.setCurrentItem(file.name);
+      setState(() => _currentName = file.name);
 
       Uint8List bytes;
       try {
         bytes = await File(file.path).readAsBytes();
       } catch (_) {
+        _scan.recordFileScanned();
         setState(() {
-          _outcomes.add(_Outcome.failed(file.name, 'Unreadable on this device'));
+          _outcomes
+              .add(_Outcome.failed(file.name, 'Unreadable on this device'));
         });
         continue;
       }
@@ -757,10 +821,13 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
         );
         final report = ScanReport.fromFileResponse(
             Map<String, dynamic>.from(data as Map));
+        final threat = (report.verdict ?? Verdict.unknown).isSafeEnough == false;
+        _scan.recordFileScanned(threat: threat);
         setState(() => _outcomes.add(_Outcome.ok(file.name, report: report)));
       } on ApiException catch (e) {
         if (!mounted) return;
         if (e.isRateLimited) {
+          _scan.fail(friendlyAppError(e, signedIn: true));
           setState(() {
             _stoppedReason =
                 'Stopped: the server rate limit was reached. ${(e.retryAfterSeconds ?? 0) > 0 ? "Wait ${e.retryAfterSeconds}s before continuing." : 'Wait for the window to reset and start a new batch.'}';
@@ -769,19 +836,22 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
           break;
         }
         if (e.isUnauthorized) {
+          _scan.fail(friendlyAppError(e, signedIn: true));
           setState(() {
             _stoppedReason =
-                'Stopped: the session is not authenticated. Sign in again '
-                'on a configured build.';
+                'Stopped: the session ended. Sign in again and restart the '
+                'batch.';
           });
           break;
         }
-        setState(() =>
-            _outcomes.add(_Outcome.failed(file.name, e.message)));
+        _scan.recordFileScanned();
+        setState(() => _outcomes
+            .add(_Outcome.failed(file.name, friendlyAppError(e, signedIn: true))));
         // Continue with the next file — one bad scan shouldn't kill the batch.
       } catch (_) {
-        setState(() =>
-            _outcomes.add(_Outcome.failed(file.name, 'Network error')));
+        _scan.recordFileScanned();
+        setState(() => _outcomes
+            .add(_Outcome.failed(file.name, 'Could not reach the service')));
       }
 
       // Pace toward the server's file-scan rate limit. No pause after the
@@ -794,7 +864,23 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
       if (!mounted) return;
     }
 
+    final analyzed =
+        _outcomes.where((o) => o.kind == _EntryKind.ok).length;
+    final flagged = _outcomes
+        .where((o) =>
+            o.kind == _EntryKind.ok &&
+            (o.report?.verdict ?? Verdict.unknown).isSafeEnough == false)
+        .length;
+
     if (!mounted) return;
+    if (_stopRequested) {
+      _scan.cancel();
+    } else if (flagged > 0) {
+      _scan.completeWithThreat(
+          threatsDetected: flagged, objectsAnalyzed: analyzed);
+    } else {
+      _scan.complete();
+    }
     setState(() {
       _phase = _ScanPhase.done;
       if (_stopRequested) {
@@ -803,13 +889,15 @@ class _DeviceScanFormState extends State<DeviceScanForm> {
     });
     if (_stoppedReason == null && _retryAfterSeconds == null) {
       messenger.showSnackBar(SnackBar(
-        content: Text(
-            'Scanned ${_outcomes.where((o) => o.kind == _EntryKind.ok).length} files.'),
+        content: Text(flagged > 0
+            ? '$flagged flagged item${flagged == 1 ? '' : 's'} — review below.'
+            : 'Scanned $analyzed file${analyzed == 1 ? '' : 's'}.'),
       ));
     }
   }
 
   void _reset() {
+    _scan.reset();
     setState(() {
       _phase = _ScanPhase.idle;
       _queued = null;

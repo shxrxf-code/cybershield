@@ -82,12 +82,12 @@ class _AppsScreenState extends State<AppsScreen> {
         _loading = false;
         _supported = false;
       });
-    } on PlatformException catch (e) {
+    } on PlatformException {
       if (!mounted) return;
       setState(() {
         _loading = false;
         _supported = true;
-        _error = e.message ?? 'Could not list installed apps.';
+        _error = 'Could not list installed apps on this device.';
       });
     } catch (_) {
       if (!mounted) return;

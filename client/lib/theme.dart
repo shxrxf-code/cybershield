@@ -40,12 +40,30 @@ ColorScheme _lightScheme() => ColorScheme.fromSeed(
 
 ThemeData buildTheme() => buildLightTheme();
 
+/// Minimum touch targets per the accessibility plan: tappable controls are
+/// never smaller than 44×44 logical pixels.
+final ButtonStyle _minTouchFilled = FilledButton.styleFrom(
+  minimumSize: const Size(64, 44),
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+);
+final ButtonStyle _minTouchOutlined = OutlinedButton.styleFrom(
+  minimumSize: const Size(64, 44),
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+);
+final ButtonStyle _minTouchText = TextButton.styleFrom(
+  minimumSize: const Size(48, 40),
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+);
+
 ThemeData buildLightTheme() {
   final scheme = _lightScheme();
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: const Color(0xFFF4F7FB),
+    filledButtonTheme: FilledButtonThemeData(style: _minTouchFilled),
+    outlinedButtonTheme: OutlinedButtonThemeData(style: _minTouchOutlined),
+    textButtonTheme: TextButtonThemeData(style: _minTouchText),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -107,6 +125,9 @@ ThemeData buildDarkTheme() {
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: const Color(0xFF0B1220),
+    filledButtonTheme: FilledButtonThemeData(style: _minTouchFilled),
+    outlinedButtonTheme: OutlinedButtonThemeData(style: _minTouchOutlined),
+    textButtonTheme: TextButtonThemeData(style: _minTouchText),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,

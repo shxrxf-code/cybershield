@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../app.dart';
 import '../../core/api_exception.dart';
+import '../../core/app_errors.dart';
 import '../../core/models/scan.dart';
 import '../../core/config.dart';
+import '../../core/scan_state.dart';
 import '../report/report_screen.dart';
 import 'async_scan.dart';
 import 'scan_submit_section.dart';
@@ -20,11 +22,12 @@ class _TextScanFormState extends State<TextScanForm> {
   final _text = TextEditingController();
   bool _quick = false;
   bool _asyncMode = false;
-  bool _busy = false;
+  final SecurityScan _scan = SecurityScan();
 
   @override
   void dispose() {
     _text.dispose();
+    _scan.dispose();
     super.dispose();
   }
 
@@ -32,7 +35,7 @@ class _TextScanFormState extends State<TextScanForm> {
     final session = AppScope.of(context);
     final messenger = ScaffoldMessenger.of(context);
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _busy = true);
+    _scan.start();
     try {
       final body = {
         'text': _text.text,
@@ -40,14 +43,18 @@ class _TextScanFormState extends State<TextScanForm> {
         'client_label': 'cybershield-flutter',
       };
       if (_asyncMode) {
+        _scan.setAnalyzing();
         await submitAsyncAndOpenReport(context,
             submit: () => session.api.postJson('/api/v1/scan/text',
                 body: body, query: const {'async': 'true'}));
+        _scan.complete();
       } else {
+        _scan.setAnalyzing();
         final data =
             await session.api.postJson('/api/v1/scan/text', body: body);
         final report = ScanReport.fromTextResponse(
             Map<String, dynamic>.from(data as Map));
+        _scan.complete();
         if (!mounted) return;
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -56,15 +63,20 @@ class _TextScanFormState extends State<TextScanForm> {
       }
     } on ApiException catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      _scan.fail(friendlyAppError(e, signedIn: session.isAuthenticated));
+      messenger.showSnackBar(
+          SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
+    } catch (_) {
+      if (!mounted) return;
+      _scan.fail(offlineMessage);
+      messenger.showSnackBar(const SnackBar(content: Text(offlineMessage)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final busy = _scan.isRunning;
     return Form(
       key: _formKey,
       child: ListView(
@@ -96,7 +108,7 @@ class _TextScanFormState extends State<TextScanForm> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _text,
-                    enabled: !_busy,
+                    enabled: !busy,
                     maxLines: 12,
                     minLines: 8,
                     maxLength: 100000,
@@ -134,7 +146,7 @@ class _TextScanFormState extends State<TextScanForm> {
           ScanSubmitSection(
             quick: _quick,
             asyncMode: _asyncMode,
-            busy: _busy,
+            phase: _scan.phase,
             submitLabel: 'Scan text',
             onSubmit: _submit,
             onQuickChanged: (v) => setState(() => _quick = v),

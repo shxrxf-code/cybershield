@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../app.dart';
 import '../../core/api_exception.dart';
+import '../../core/app_errors.dart';
 import '../../core/models/scan.dart';
+import '../../core/scan_state.dart';
 import '../../widgets/consent_panel.dart';
 import '../report/report_screen.dart';
 import 'async_scan.dart';
@@ -22,11 +24,12 @@ class _UrlScanFormState extends State<UrlScanForm> {
   bool _resolveDns = true;
   bool _quick = false;
   bool _asyncMode = false;
-  bool _busy = false;
+  final SecurityScan _scan = SecurityScan();
 
   @override
   void dispose() {
     _url.dispose();
+    _scan.dispose();
     super.dispose();
   }
 
@@ -34,7 +37,7 @@ class _UrlScanFormState extends State<UrlScanForm> {
     final session = AppScope.of(context);
     final messenger = ScaffoldMessenger.of(context);
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _busy = true);
+    _scan.start();
     try {
       final body = {
         'url': _url.text.trim(),
@@ -44,16 +47,20 @@ class _UrlScanFormState extends State<UrlScanForm> {
         'client_label': 'cybershield-flutter',
       };
       if (_asyncMode) {
+        _scan.setAnalyzing();
         await submitAsyncAndOpenReport(context,
             submit: () => session.api.postJson(
                 '/api/v1/scan/url',
                 body: body,
                 query: const {'async': 'true'}));
+        _scan.complete();
       } else {
+        _scan.setAnalyzing();
         final data =
             await session.api.postJson('/api/v1/scan/url', body: body);
         final report = ScanReport.fromUrlResponse(
             Map<String, dynamic>.from(data as Map));
+        _scan.complete();
         if (!mounted) return;
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -62,15 +69,22 @@ class _UrlScanFormState extends State<UrlScanForm> {
       }
     } on ApiException catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      _scan.fail(friendlyAppError(e, signedIn: session.isAuthenticated));
+      messenger.showSnackBar(
+          SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
+    } catch (_) {
+      if (!mounted) return;
+      _scan.fail(friendlyAppError(
+          ApiException(code: 'network_unreachable', statusCode: 0),
+          signedIn: true));
+      messenger.showSnackBar(const SnackBar(content: Text(offlineMessage)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final busy = _scan.isRunning;
     return Form(
       key: _formKey,
       child: ListView(
@@ -102,7 +116,7 @@ class _UrlScanFormState extends State<UrlScanForm> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _url,
-                    enabled: !_busy,
+                    enabled: !busy,
                     textInputAction: TextInputAction.done,
                     keyboardType: TextInputType.url,
                     onFieldSubmitted: (_) => _submit(),
@@ -133,7 +147,7 @@ class _UrlScanFormState extends State<UrlScanForm> {
                     subtitle: const Text(
                         'Report the addresses the host resolves to.'),
                     value: _resolveDns,
-                    onChanged: _busy
+                    onChanged: busy
                         ? null
                         : (v) => setState(() => _resolveDns = v),
                   ),
@@ -147,7 +161,7 @@ class _UrlScanFormState extends State<UrlScanForm> {
           ScanSubmitSection(
             quick: _quick,
             asyncMode: _asyncMode,
-            busy: _busy,
+            phase: _scan.phase,
             submitLabel: 'Scan URL',
             onSubmit: _submit,
             onQuickChanged: (v) => setState(() => _quick = v),

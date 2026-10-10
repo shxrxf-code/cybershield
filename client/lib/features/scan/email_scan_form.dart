@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../app.dart';
 import '../../core/api_exception.dart';
+import '../../core/app_errors.dart';
 import '../../core/models/scan.dart';
+import '../../core/scan_state.dart';
 import '../../widgets/consent_panel.dart';
 import '../report/report_screen.dart';
 import 'async_scan.dart';
@@ -24,13 +26,14 @@ class _EmailScanFormState extends State<EmailScanForm> {
   bool _headersOnly = false;
   bool _quick = false;
   bool _asyncMode = false;
-  bool _busy = false;
+  final SecurityScan _scan = SecurityScan();
 
   @override
   void dispose() {
     _raw.dispose();
     _subject.dispose();
     _sender.dispose();
+    _scan.dispose();
     super.dispose();
   }
 
@@ -38,7 +41,7 @@ class _EmailScanFormState extends State<EmailScanForm> {
     final session = AppScope.of(context);
     final messenger = ScaffoldMessenger.of(context);
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _busy = true);
+    _scan.start();
     try {
       final body = <String, dynamic>{
         'raw_message': _raw.text,
@@ -53,14 +56,18 @@ class _EmailScanFormState extends State<EmailScanForm> {
       if (sender.isNotEmpty) body['sender'] = sender;
 
       if (_asyncMode) {
+        _scan.setAnalyzing();
         await submitAsyncAndOpenReport(context,
             submit: () => session.api.postJson('/api/v1/scan/email',
                 body: body, query: const {'async': 'true'}));
+        _scan.complete();
       } else {
+        _scan.setAnalyzing();
         final data =
             await session.api.postJson('/api/v1/scan/email', body: body);
         final report = ScanReport.fromEmailResponse(
             Map<String, dynamic>.from(data as Map));
+        _scan.complete();
         if (!mounted) return;
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -69,15 +76,20 @@ class _EmailScanFormState extends State<EmailScanForm> {
       }
     } on ApiException catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      _scan.fail(friendlyAppError(e, signedIn: session.isAuthenticated));
+      messenger.showSnackBar(
+          SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
+    } catch (_) {
+      if (!mounted) return;
+      _scan.fail(offlineMessage);
+      messenger.showSnackBar(const SnackBar(content: Text(offlineMessage)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final busy = _scan.isRunning;
     return Form(
       key: _formKey,
       child: ListView(
@@ -109,7 +121,7 @@ class _EmailScanFormState extends State<EmailScanForm> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _raw,
-                    enabled: !_busy,
+                    enabled: !busy,
                     maxLines: 12,
                     minLines: 8,
                     style: const TextStyle(fontFamily: 'monospace'),
@@ -134,7 +146,7 @@ class _EmailScanFormState extends State<EmailScanForm> {
                       Expanded(
                         child: TextFormField(
                           controller: _subject,
-                          enabled: !_busy,
+                          enabled: !busy,
                           decoration: const InputDecoration(
                             labelText: 'Subject (optional)',
                             prefixIcon: Icon(Icons.title_rounded, size: 20),
@@ -146,7 +158,7 @@ class _EmailScanFormState extends State<EmailScanForm> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _sender,
-                    enabled: !_busy,
+                    enabled: !busy,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       labelText: 'Sender (optional)',
@@ -172,7 +184,7 @@ class _EmailScanFormState extends State<EmailScanForm> {
                         'Parse and analyse headers only — never submit the '
                         'message elsewhere.'),
                     value: _headersOnly,
-                    onChanged: _busy
+                    onChanged: busy
                         ? null
                         : (v) => setState(() => _headersOnly = v),
                   ),
@@ -186,7 +198,7 @@ class _EmailScanFormState extends State<EmailScanForm> {
           ScanSubmitSection(
             quick: _quick,
             asyncMode: _asyncMode,
-            busy: _busy,
+            phase: _scan.phase,
             submitLabel: 'Scan email',
             onSubmit: _submit,
             onQuickChanged: (v) => setState(() => _quick = v),

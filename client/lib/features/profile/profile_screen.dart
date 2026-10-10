@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../app.dart';
 import '../../core/api_client.dart';
 import '../../core/api_exception.dart';
+import '../../core/app_errors.dart';
 import '../../core/config.dart';
 import '../../core/models/api_key.dart';
 import '../../core/models/user.dart';
@@ -65,7 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
-        _keysError = e.message;
+        _keysError = friendlyAppError(e, signedIn: true);
         _loadingKeys = false;
       });
     } catch (_) {
@@ -104,7 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
-        _usersError = e.message;
+        _usersError = friendlyAppError(e, signedIn: true);
         _loadingUsers = false;
       });
     } catch (_) {
@@ -123,7 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = session.user;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('Settings'),
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -298,7 +299,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+          .showSnackBar(SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
     }
   }
 
@@ -528,7 +529,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+          .showSnackBar(SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -605,7 +606,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+          .showSnackBar(SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
     }
   }
 
@@ -727,7 +728,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+          .showSnackBar(SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
     }
   }
 
@@ -795,7 +796,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+          .showSnackBar(SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
     }
   }
 
@@ -1001,7 +1002,7 @@ class _PasswordFormState extends State<_PasswordForm> {
       _confirm.clear();
     } on ApiException catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      messenger.showSnackBar(SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1088,8 +1089,9 @@ class _PasswordFormState extends State<_PasswordForm> {
 /// Shown in place of the profile when the session is not authenticated.
 ///
 /// This build has no login *screen* — instead a sign-in bottom sheet (from
-/// here or from the Status page) starts a remembered session. The view is
-/// honest: it never fakes a session or reports a user that isn't there.
+/// here, from the Home page or from a signed-out state) starts a remembered
+/// session. The view is honest: it never fakes a session or reports a user
+/// that isn't there.
 class _SignedOutView extends StatelessWidget {
   const _SignedOutView();
 
@@ -1117,7 +1119,7 @@ class _SignedOutView extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   'There is no login screen in this build. Sign in below '
-                  '(or from the Status page) and the session is remembered '
+                  '(or from the Home page) and the session is remembered '
                   'on this device.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context)

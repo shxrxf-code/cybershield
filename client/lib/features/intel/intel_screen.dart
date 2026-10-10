@@ -3,8 +3,11 @@ import 'package:intl/intl.dart';
 
 import '../../app.dart';
 import '../../core/api_exception.dart';
+import '../../core/app_errors.dart';
 import '../../core/models/intel.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/signed_out_state.dart';
+import '../auth/sign_in_sheet.dart';
 
 class IntelScreen extends StatefulWidget {
   const IntelScreen({super.key});
@@ -63,7 +66,7 @@ class _IntelScreenState extends State<IntelScreen> {
         if (e.isNotFound) {
           _notFound = true;
         } else {
-          _error = e.message;
+          _error = friendlyAppError(e, signedIn: session.isAuthenticated);
         }
       });
     } catch (_) {
@@ -78,9 +81,17 @@ class _IntelScreenState extends State<IntelScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final session = AppScope.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Threat Intel')),
-      body: ListView(
+      body: !session.isAuthenticated
+          ? SignedOutState(
+              title: 'Sign in to search threat intelligence',
+              message: 'Intel lookups use the reputation answers collected '
+                  'during your account\'s scans.',
+              onSignIn: () => showSignInSheet(context),
+            )
+          : ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Card(

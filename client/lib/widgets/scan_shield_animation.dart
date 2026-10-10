@@ -16,12 +16,17 @@ class ScanShieldAnimation extends StatefulWidget {
     this.size = 84,
     this.color,
     this.progress,
+    this.animating = false,
     this.semanticsLabel,
   });
 
   final double size;
   final Color? color;
   final double? progress;
+
+  /// Whether the ring keeps spinning. Home-page logos stay static (battery
+  /// lean); only live scan states set this to true.
+  final bool animating;
   final String? semanticsLabel;
 
   @override
@@ -38,7 +43,20 @@ class _ScanShieldAnimationState extends State<ScanShieldAnimation>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1600),
-    )..repeat();
+      value: 0,
+    );
+    if (widget.animating) _controller.repeat();
+  }
+
+  @override
+  void didUpdateWidget(ScanShieldAnimation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animating && !oldWidget.animating) {
+      _controller.repeat();
+    } else if (!widget.animating && oldWidget.animating) {
+      _controller.stop();
+      _controller.value = 0;
+    }
   }
 
   @override

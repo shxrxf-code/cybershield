@@ -19,7 +19,7 @@ class ScanButton extends StatelessWidget {
   });
 
   final ScanPhase phase;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final String label;
   final IconData icon;
   final bool expanded;
@@ -60,7 +60,7 @@ class ScanButton extends StatelessWidget {
               const SizedBox(
                 width: 22,
                 height: 22,
-                child: ScanShieldAnimation(size: 22),
+                child: ScanShieldAnimation(size: 22, animating: true),
               ),
               const SizedBox(width: 10),
               Text('${phase.label}…'),

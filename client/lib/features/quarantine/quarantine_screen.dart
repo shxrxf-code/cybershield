@@ -3,9 +3,12 @@ import 'package:intl/intl.dart';
 
 import '../../app.dart';
 import '../../core/api_exception.dart';
+import '../../core/app_errors.dart';
 import '../../core/models/quarantine.dart';
 import '../../widgets/error_view.dart';
+import '../../widgets/signed_out_state.dart';
 import '../../widgets/verdict_chip.dart';
+import '../auth/sign_in_sheet.dart';
 import 'download_service.dart';
 
 class QuarantineScreen extends StatefulWidget {
@@ -58,7 +61,7 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.message;
+        _error = friendlyAppError(e, signedIn: session.isAuthenticated);
         _loading = false;
       });
     } catch (_) {
@@ -84,7 +87,8 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
       );
     } on ApiException catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      messenger.showSnackBar(
+          SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
     } catch (_) {
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(
@@ -117,7 +121,8 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
       );
     } on ApiException catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      messenger.showSnackBar(
+          SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
     } catch (_) {
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(
@@ -147,7 +152,8 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
           SnackBar(content: Text('${item.originalFilename} deleted.')));
     } on ApiException catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      messenger.showSnackBar(
+          SnackBar(content: Text(friendlyAppError(e, signedIn: true))));
     } catch (_) {
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(
@@ -195,6 +201,7 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final session = AppScope.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Quarantine'),
@@ -206,7 +213,14 @@ class _QuarantineScreenState extends State<QuarantineScreen> {
           ),
         ],
       ),
-      body: _buildBody(),
+      body: !session.isAuthenticated
+          ? SignedOutState(
+              title: 'Sign in to view quarantine',
+              message: 'Quarantined files are stored per account on the '
+                  'CyberShield service.',
+              onSignIn: () => showSignInSheet(context),
+            )
+          : _buildBody(),
     );
   }
 

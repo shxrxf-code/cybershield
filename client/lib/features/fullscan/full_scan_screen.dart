@@ -16,6 +16,7 @@ import '../../core/models/scan.dart';
 import '../../core/scan_cache.dart';
 import '../../core/scan_state.dart';
 import '../../widgets/scan_shield_animation.dart';
+import '../../widgets/signed_out_state.dart';
 import '../auth/sign_in_sheet.dart';
 import '../history/history_screen.dart';
 import '../report/report_screen.dart';
@@ -59,7 +60,8 @@ class _Outcome {
 
   _Outcome.failed(this.name, this.error)
       : kind = _EntryKind.failed,
-        report = null;
+        report = null,
+        cachedVerdict = null;
 
   final String name;
   final _EntryKind kind;
@@ -81,7 +83,7 @@ class _FullScanScreenState extends State<FullScanScreen> {
   String? _rootPath;
   String? _rootName;
   List<_QueuedFile>? _queued;
-  List<_Outcome> _outcomes = [];
+  final List<_Outcome> _outcomes = [];
   int _skippedTooLarge = 0;
   int _skippedFromCache = 0;
   String? _stoppedReason;
@@ -90,8 +92,6 @@ class _FullScanScreenState extends State<FullScanScreen> {
   bool _quick = true;
   bool _quarantine = false;
   bool _skipUnchanged = true;
-
-  ScanCache? _cache;
 
   @override
   void dispose() {
@@ -197,13 +197,11 @@ class _FullScanScreenState extends State<FullScanScreen> {
 
     final queued = <_QueuedFile>[];
     var tooLarge = 0;
-    var dirs = 0;
     String? error;
     try {
       await for (final entity in Directory(root).list(recursive: true)) {
         if (_stopRequested) break;
         if (entity is Directory) {
-          dirs += 1;
           _scan.noteDirectoryScanned();
           continue;
         }
@@ -399,8 +397,8 @@ class _FullScanScreenState extends State<FullScanScreen> {
     if (_stoppedReason == null && !_stopRequested) {
       messenger.showSnackBar(SnackBar(
         content: Text(flagged > 0
-            ? '${flagged.length} flagged item${flagged.length == 1 ? '' : 's'} — review below.'
-            : 'Scan complete — ${analyzed} file${analyzed == 1 ? '' : 's'} analysed.'),
+            ? '$flagged flagged item${flagged == 1 ? '' : 's'} — review below.'
+            : 'Scan complete — $analyzed file${analyzed == 1 ? '' : 's'} analysed.'),
       ));
     }
   }
@@ -485,8 +483,10 @@ class _FullScanScreenState extends State<FullScanScreen> {
     final platform = currentPlatform();
     final alreadyChosen = _queued != null;
     if (!session.isAuthenticated) {
-      return SignedOutGate(
+      return SignedOutState(
         title: 'Sign in to run a full scan',
+        message:
+            'Full scans are stored per account on the CyberShield service.',
         onSignIn: () => showSignInSheet(context),
       );
     }
@@ -704,6 +704,7 @@ class _FullScanScreenState extends State<FullScanScreen> {
                 ScanShieldAnimation(
                   size: 96,
                   progress: fraction,
+                  animating: true,
                   semanticsLabel: 'Scanning',
                 ),
                 const SizedBox(height: 14),
@@ -870,8 +871,8 @@ class _FullScanScreenState extends State<FullScanScreen> {
         : threatOutcome
             ? '${flagged.length} suspicious or malicious item${flagged.length == 1 ? '' : 's'} found. Review them below.'
             : failed.isNotEmpty
-                ? '${scannedCount} items analysed; ${failed.length} could not be read. Nothing was flagged.'
-                : '${scannedCount} item${scannedCount == 1 ? '' : 's'} analysed — nothing flagged.';
+                ? '$scannedCount items analysed; ${failed.length} could not be read. Nothing was flagged.'
+                : '$scannedCount item${scannedCount == 1 ? '' : 's'} analysed — nothing flagged.';
 
     return ListView(
       padding: const EdgeInsets.all(16),
