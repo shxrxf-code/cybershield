@@ -51,7 +51,7 @@ final ButtonStyle _minTouchOutlined = OutlinedButton.styleFrom(
   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
 );
 final ButtonStyle _minTouchText = TextButton.styleFrom(
-  minimumSize: const Size(48, 40),
+  minimumSize: const Size(48, 44),
   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
 );
 

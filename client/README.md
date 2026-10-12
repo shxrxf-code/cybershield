@@ -7,15 +7,17 @@ Windows, Linux and macOS.
 
 ## Screens
 
-Navigation is slightly different on desktop and mobile. Wide windows get an
-antivirus-style `NavigationRail` with a brand header and every section; on
-phones a 5-item bottom bar (Status, Scan, History, Quarantine, More) keeps the
-secondary sections (Threat Intel, Apps, Profile) behind a **More** sheet so the
-bar never crowds a small display.
+Navigation is slightly different on desktop and mobile. Wide windows (>= 1024
+logical pixels) get an antivirus-style `NavigationRail` with a brand header and
+every section; narrower windows use a 5-item bottom bar — **Home, Scan,
+History, Security, Settings** — which keeps the secondary sections (Quarantine,
+Threat Intel, Apps) reachable from the **Security** page and the desktop rail so
+the bar never crowds a small display.
 
-- **Status** — an AV-style Security Center: a shield status hero with the
-  engine state, big scan actions, a grid of scan shortcuts, metrics, verdict
-  distribution, a 30-day activity chart and a static-analysis-only note.
+- **Home** — the landing page: a shield status hero whose state is derived only
+  from real inputs (session, engine reachability, actual verdict counts), big
+  scan actions, a protection-module grid, recent scan activity and a verdict
+  summary. There is no fabricated "protected" state and no activity chart.
 - **Scan** — tabs: **Device** (default), URL, Email, Text, File, APK.
   - The Device tab scans a *folder you pick* (or a multi-selected set of files)
     file by file through the static-analysis API. It is honest by design: only
@@ -28,15 +30,17 @@ bar never crowds a small display.
   name, version and *declared* permissions from the package manager. Nothing
   is read at runtime and nothing is uploaded. Other platforms show an honest
   "not available" card.
-- **Profile** — account card, password/API-key management, admin users and
-  (from the Profile page and the Status page) the sign-in sheet.
+- **Security** — protection status, module list, permission/capability summary,
+  battery-aware scheduling note, and links to Quarantine, Threat Intel and Apps.
+- **Settings** — account card, password/API-key management, admin users, and
+  (from here and the Home hero) the sign-in sheet.
 
 ## Authentication
 
 This build has **no login screen** — the app boots straight to the shell with
 a splash, and authentication lives in an in-app **sign-in bottom sheet**
-(`lib/features/auth/sign_in_sheet.dart`). The Status page shows a first-run
-"Sign in to store scans" prompt whenever no session is stored; Profile offers
+(`lib/features/auth/sign_in_sheet.dart`). The Home page shows a first-run
+"Sign in to store scans" prompt whenever no session is stored; Settings offers
 the same sheet.
 
 - Supported modes: account **credentials** (`POST /api/v1/auth/login`, JWT with
@@ -118,5 +122,5 @@ flutter test      # widget + integration-style tests (root gate, envelope decodi
 Verdict colors/score-band labels, the `{"error": {...}}` error envelope (never
 raw JSON), `Retry-After` handling on 429, the shell-first boot paths
 (unauthenticated → shell, authenticated → shell), the Sign-in sheet
-credentials/API-key switching, and the first-run sign-in prompt on the Status
-page are covered by the test suite.# Cyber-Shield
+credentials/API-key switching, and the first-run sign-in prompt on the Home
+page are covered by the test suite.

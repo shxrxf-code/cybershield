@@ -34,28 +34,35 @@ async def log_audit(
     request_id: str | None = None,
     details: dict[str, Any] | None = None,
     message: str | None = None,
-) -> AuditEvent:
-    """Record one immutable audit event. Never raises."""
+) -> AuditEvent | None:
+    """Record one immutable audit event. Best effort: never raises.
+
+    The insert runs inside a SAVEPOINT so a failure rolls back only the audit
+    row and leaves the caller's transaction usable. A database-level failure is
+    logged and swallowed — auditing must never take down the request it is
+    recording.
+    """
     try:
-        event = AuditEvent(
-            action=action,
-            outcome=outcome,
-            actor_id=actor_id,
-            actor_label=actor_label,
-            target_type=target_type,
-            target_id=target_id,
-            source_ip=source_ip,
-            user_agent=user_agent,
-            request_id=request_id,
-            details=details,
-            message=message,
-        )
-        db.add(event)
-        await db.flush()
+        async with db.begin_nested():
+            event = AuditEvent(
+                action=action,
+                outcome=outcome,
+                actor_id=actor_id,
+                actor_label=actor_label,
+                target_type=target_type,
+                target_id=target_id,
+                source_ip=source_ip,
+                user_agent=user_agent,
+                request_id=request_id,
+                details=details,
+                message=message,
+            )
+            db.add(event)
+            await db.flush()
         return event
     except Exception:  # noqa: BLE001 - auditing must never break the request
         logger.exception("audit_log_failed", extra={"action": action})
-        raise
+        return None
 
 
 async def record_rate_limit_event(

@@ -80,8 +80,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         from app.workers.queue import get_scan_queue, shutdown_scan_queue
 
-        if not cfg.use_redis_queue:
-            get_scan_queue().start()
+        # Start the in-process asyncio worker explicitly at boot. It is the only
+        # implemented scan backend (the distributed Redis consumer does not
+        # exist yet); ``get_scan_queue()`` would also start it lazily on first
+        # enqueue/health probe, but an explicit boot start keeps the lifecycle
+        # in one place and independent of what USE_REDIS_QUEUE (which also
+        # enables the shared Redis rate-limit store) is set to.
+        get_scan_queue().start()
 
         yield
 
@@ -118,7 +123,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.include_router(api_router, prefix="/api/v1")
+    app.include_router(api_router, prefix=cfg.api_v1_prefix)
 
     @app.get("/", include_in_schema=False)
     async def root() -> dict[str, object]:

@@ -15,6 +15,7 @@ import '../../widgets/verdict_style.dart';
 import '../auth/sign_in_sheet.dart';
 import '../fullscan/full_scan_screen.dart';
 import '../history/history_screen.dart';
+import '../profile/profile_screen.dart';
 import '../scan/scan_hub_screen.dart';
 
 /// Home — the mobile-first landing page.
@@ -51,6 +52,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _loading = true;
   bool _initialLoadDone = false;
 
+  /// True once the secondary recent-scans fetch has settled (success *or*
+  /// failure), so the card can show the loading state only while it is really
+  /// still in flight instead of spinning forever after a quiet failure.
+  bool _recentLoaded = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -68,6 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _stats = null;
           _recent = null;
           _errorEx = null;
+          _recentLoaded = false;
         });
       }
     } else if (!_loading && _stats == null && _errorEx == null) {
@@ -117,6 +124,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadRecent() async {
     final session = AppScope.of(context);
     if (!session.isAuthenticated) return;
+    if (mounted) setState(() => _recentLoaded = false);
     try {
       final data = await session.api.getJson('/api/v1/scans', query: {
         'page_size': '5',
@@ -126,12 +134,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _recent = ScansPage.fromJson(Map<String, dynamic>.from(data as Map))
             .items;
+        _recentLoaded = true;
       });
     } on ApiException {
       // Recent activity is secondary; a failure here must not obscure the
-      // main status. Leave _recent null — the section falls back quietly.
+      // main status. Mark it settled so the card shows an error, not a
+      // perpetual spinner.
+      if (!mounted) return;
+      setState(() => _recentLoaded = true);
     } catch (_) {
-      // ignored (secondary section)
+      if (!mounted) return;
+      setState(() => _recentLoaded = true);
     }
   }
 
@@ -167,7 +180,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             IconButton(
               tooltip: session.user!.email,
               icon: const Icon(Icons.account_circle_outlined),
-              onPressed: () {},
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                    builder: (_) => const ProfileScreen()),
+              ),
             ),
         ],
       ),
@@ -517,19 +533,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     final recent = _recent;
     if (recent == null) {
-      // Still loading, or the secondary fetch quietly failed.
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Row(children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            SizedBox(width: 12),
-            Text('Loading recent scans…'),
-          ]),
+      if (!_recentLoaded) {
+        return const Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 12),
+              Text('Loading recent scans…'),
+            ]),
+          ),
+        );
+      }
+      // The secondary fetch settled without data: show an honest failure with
+      // a retry rather than an endless spinner.
+      return Card(
+        child: ListTile(
+          leading: Icon(Icons.cloud_off_rounded,
+              color: Theme.of(context).colorScheme.outline),
+          title: const Text('Could not load recent activity',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('Pull to refresh, or open the full history.'),
+          trailing: TextButton(
+            onPressed: _loadRecent,
+            child: const Text('Retry'),
+          ),
+          onTap: _openHistory,
         ),
       );
     }

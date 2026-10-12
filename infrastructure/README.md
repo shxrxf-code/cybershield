@@ -135,24 +135,25 @@ PY
   `QUARANTINE_RETENTION_DAYS` (default 14); blobs are AES-256-GCM envelopes
   (`CBSQ1` magic) tied to `QUARANTINE_ENCRYPTION_KEY`.
 - **Scan queue:** `app/workers/queue.py` runs an **in-process** asyncio worker
-  started by `create_app()` when `USE_REDIS_QUEUE=false` (the default). Jobs
-  are lost on restart; structured scans are re-submittable, and the app treats
-  that as acceptable. Redis (`REDIS_URL`) is used for the Redis-backed rate
-  limiter only when `USE_REDIS_QUEUE=true`.
+  started by `create_app()` at boot. Jobs are lost on restart; structured scans
+  are re-submittable, and the app treats that as acceptable.
+- **Redis:** the only Redis-backed feature today is the rate limiter. Setting
+  `USE_REDIS_QUEUE=true` switches rate-limit counters to a shared Redis store
+  (so limits are global rather than per process); it does **not** provide a
+  distributed scan queue. The scan worker still starts in-process.
 
 ## 5. The `worker` service and `USE_REDIS_QUEUE` (read this)
 
 `docker-compose.yml` scaffolds a `worker` service behind the `worker` profile.
 **Do not enable it yet.** The backend's `queue.py` implements only the
 in-process queue — there is no Redis consumer and no `__main__` entrypoint, so
-`python -m app.workers.queue` currently exits without consuming anything. If you
-set `USE_REDIS_QUEUE=true` today, the API would stop starting its in-process
-worker (see `app/main.py`) and *nothing* would process scans — including the
-rate limiter's Redis backend, which is gated behind the same flag.
+`python -m app.workers.queue` currently exits without consuming anything.
+`USE_REDIS_QUEUE` controls only the rate limiter's Redis store; the API always
+starts its in-process scan worker, so scans never silently stall.
 
 - The default topology (single `api` container) is the correct one.
 - When the upstream Redis consumer lands, enable `worker` by running
-  `docker compose --profile worker up -d` and flipping `USE_REDIS_QUEUE=true`.
+  `docker compose --profile worker up -d` and wiring the queue to it.
 - Scale-out today: run readonly replicas of the whole `api` service without the
   Redis flag, remembering rate-limit counters are per-process in that mode.
 

@@ -22,7 +22,13 @@ enum ScanPhase {
   bool get isRunning =>
       this == initializing || this == queued || this == scanning || this == analyzing;
 
-  bool get isTerminal => this == completed || this == cancelled || this == failed;
+  /// A run has finished, one way or another. A threat result is terminal too:
+  /// the scan itself is over even though it found something.
+  bool get isTerminal =>
+      this == threatFound ||
+      this == completed ||
+      this == cancelled ||
+      this == failed;
 
   /// Short label for status chips.
   String get label => switch (this) {

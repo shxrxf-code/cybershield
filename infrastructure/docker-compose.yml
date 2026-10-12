@@ -35,7 +35,7 @@ x-api: &api
     # --- core ---------------------------------------------------------------
     ENVIRONMENT: ${ENVIRONMENT:-production}
     DEBUG: "false"
-    DOCS_ENABLED: "true"
+    DOCS_ENABLED: "false"
     # The canonical non-secret surface is backend/.env.example; only
     # deployment-specific variables are pinned here. env_file is NOT used:
     # .env.example ships placeholders (bare `SECRET_KEY=`, a SQLite
@@ -56,8 +56,10 @@ x-api: &api
 
     # --- scanning / queue ---------------------------------------------------
     # In-process asyncio scan queue: the default and the only implemented
-    # backend (see infrastructure/README.md). Do NOT set true — no Redis
-    # consumer exists upstream yet, and scans would enqueue and never run.
+    # backend (see infrastructure/README.md). Setting this true enables the
+    # shared Redis rate-limit store; the in-process scan worker starts at boot
+    # either way, so scans never silently stall. It does not, by itself,
+    # distribute scans across processes — no Redis consumer exists yet.
     USE_REDIS_QUEUE: "false"
     # ClamAV is optional; the service name is used so the "scanner" profile's
     # clamd (if running) is found with zero configuration.
@@ -153,8 +155,8 @@ services:
     # The entrypoint runs `alembic upgrade head` first, then this command.
     # NOTE: app/workers/queue.py currently ships ONLY the in-process queue and
     # has no __main__ block, so this command is a placeholder. Keep the
-    # `worker` profile disabled and USE_REDIS_QUEUE=false until the upstream
-    # Redis consumer exists.
+    # `worker` profile disabled until the upstream Redis consumer exists; the
+    # API always runs its own in-process worker, so scans still complete.
     command: ["python", "-m", "app.workers.queue"]
 
   # ---------------------------------------------------------------------------

@@ -165,10 +165,15 @@ that control paths, retention, and behaviour.
   [../README.md](../README.md#running-the-backend-for-development) describe.
 - **Multi-replica / production profile** — PostgreSQL via
   `DATABASE_URL=postgresql+asyncpg://…`; schema managed exclusively by
-  Alembic; `USE_REDIS_QUEUE=true` with the worker run as a separate service
-  (the API only publishes jobs); Redis-backed rate limiting so limits are
-  global, not per process; production hardening refuses insecure configs (see
+  Alembic; `USE_REDIS_QUEUE=true` switches rate-limit counters to a shared Redis
+  store so limits are global rather than per process; production hardening
+  refuses insecure configs (see
   [configuration.md#production-hardening](configuration.md#production-hardening)).
+  Note: the **distributed scan queue is not implemented yet** — the API always
+  runs its scan worker in-process (see `app/main.py` and
+  [../../infrastructure/README.md](../../infrastructure/README.md#5-the-worker-service-and-use_redis_queue-read-this)),
+  so a separate `worker` service is not operational today. Until it is, scale by
+  adding `api` containers and keep the queue work in-process.
 
 If you are new to this codebase, start with
 [../README.md](../README.md) (orientation and run instructions), then the API

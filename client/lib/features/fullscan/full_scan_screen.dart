@@ -82,6 +82,7 @@ class _FullScanScreenState extends State<FullScanScreen> {
   _ScanPage _page = _ScanPage.choose;
   String? _rootPath;
   String? _rootName;
+  bool _usingHome = false;
   List<_QueuedFile>? _queued;
   final List<_Outcome> _outcomes = [];
   int _skippedTooLarge = 0;
@@ -152,6 +153,7 @@ class _FullScanScreenState extends State<FullScanScreen> {
         _queued = queued;
         _skippedTooLarge = tooLarge;
         _rootName = '${queued.length} selected files';
+        _usingHome = false;
         _collectionError = null;
       });
     } catch (_) {
@@ -160,9 +162,10 @@ class _FullScanScreenState extends State<FullScanScreen> {
     }
   }
 
-  Future<void> _setRoot(String path) async {
+  Future<void> _setRoot(String path, {bool isHome = false}) async {
     setState(() {
       _rootPath = path;
+      _usingHome = isHome;
       _collectionError = null;
       final segments =
           path.split(RegExp(r'[/\\]')).where((s) => s.isNotEmpty).toList();
@@ -186,7 +189,7 @@ class _FullScanScreenState extends State<FullScanScreen> {
           'Could not determine your home directory on this device.');
       return;
     }
-    await _setRoot(home);
+    await _setRoot(home, isHome: true);
   }
 
   Future<void> _collect() async {
@@ -442,6 +445,7 @@ class _FullScanScreenState extends State<FullScanScreen> {
       _queued = null;
       _rootPath = null;
       _rootName = null;
+      _usingHome = false;
       _outcomes.clear();
       _stoppedReason = null;
       _collectionError = null;
@@ -538,7 +542,7 @@ class _FullScanScreenState extends State<FullScanScreen> {
                 enabled: currentPlatform() == AppPlatform.linux ||
                     currentPlatform() == AppPlatform.macos ||
                     currentPlatform() == AppPlatform.windows,
-                trailing: _rootPath != null && _rootName == 'My home folder'
+                trailing: _usingHome
                     ? const Icon(Icons.check_rounded)
                     : const Icon(Icons.chevron_right_rounded),
                 onTap: () => _useHome(),

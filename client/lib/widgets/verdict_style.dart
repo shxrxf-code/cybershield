@@ -26,10 +26,10 @@ Color verdictFillFor(Verdict verdict, {required Brightness brightness}) =>
     verdictColorFor(verdict).withValues(
         alpha: brightness == Brightness.dark ? 0.22 : 0.16);
 
+/// Verdict text colour. Kept identical to the accent colour in both themes so
+/// a verdict reads the same regardless of brightness (the fill differs).
 Color verdictTextFor(Verdict verdict, {required Brightness brightness}) =>
-    brightness == Brightness.dark
-        ? verdictColorFor(verdict)
-        : verdictColorFor(verdict);
+    verdictColorFor(verdict);
 
 String scoreBandLabel(int score) {
   if (score < 20) return 'SAFE';

@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../app.dart';
 import '../../core/api_exception.dart';
+import '../../core/app_errors.dart';
 import '../../core/config.dart';
 
 /// Opens the sign-in bottom sheet.
@@ -81,7 +82,14 @@ class _SignInSheetState extends State<SignInSheet> {
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _error = e.message;
+        // Never surface backend/JWT text. A 401 on the sign-in form means the
+        // credential was rejected; everything else maps through the central
+        // friendly-error table.
+        _error = e.isUnauthorized
+            ? (_mode == _SignInMode.credentials
+                ? 'Incorrect email or password.'
+                : 'That API key was not accepted.')
+            : friendlyAppError(e, signedIn: false);
       });
     } catch (_) {
       if (!mounted) return;

@@ -18,8 +18,10 @@ const String offlineMessage =
     'unaffected.';
 
 /// A transport failure (host unreachable, connection refused, no network).
+/// A bare/unknown `http_error` with status 0 is NOT "offline": it is an
+/// unclassified failure and should map to the generic message instead.
 bool isOfflineError(ApiException e) =>
-    e.statusCode == 0 && (e.code == 'network_unreachable' || e.code == 'http_error');
+    e.statusCode == 0 && e.code == 'network_unreachable';
 
 /// A timeout (client-side or HTTP 408).
 bool isTimeoutError(ApiException e) =>

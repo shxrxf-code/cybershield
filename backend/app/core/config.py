@@ -172,10 +172,10 @@ class Settings(BaseSettings):
             problems.append("SECRET_KEY must be set explicitly in production")
         if self.debug:
             problems.append("DEBUG must be false in production")
-        if self.docs_enabled and not self.debug:
-            # Docs are not a vulnerability per se, but they are disabled by
-            # default in production deployments via the compose profile.
-            pass
+        # Interactive docs default off in the hardened production profile
+        # (see infrastructure/docker-compose.yml). Operators who want /docs in
+        # staging-like production set DOCS_ENABLED=true explicitly; that is a
+        # deliberate choice, not an insecure default, so it is not fatal here.
         if self.cors_allow_credentials and "*" in self.cors_origins:
             problems.append("CORS_ALLOW_CREDENTIALS cannot be used with wildcard origins")
         if problems:

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../app.dart';
 import '../../core/api_exception.dart';
+import '../../core/app_errors.dart';
 import '../../core/disclaimer.dart';
 import '../../core/models/enums.dart';
 import '../../core/models/scan.dart';
@@ -92,8 +93,10 @@ class _ReportScreenState extends State<ReportScreen> {
         } else if (e.isRateLimited) {
           delay = Duration(seconds: e.retryAfterSeconds ?? 3);
         } else {
+          final message =
+              friendlyAppError(e, signedIn: session.isAuthenticated);
           setState(() {
-            _pollError = e.message;
+            _pollError = message;
             _polling = false;
           });
           return;

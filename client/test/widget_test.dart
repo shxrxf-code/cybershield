@@ -17,6 +17,7 @@ import 'package:cybershield_client/core/scan_state.dart';
 import 'package:cybershield_client/core/session_controller.dart';
 import 'package:cybershield_client/features/auth/sign_in_sheet.dart';
 import 'package:cybershield_client/features/dashboard/dashboard_screen.dart';
+import 'package:cybershield_client/features/security/security_screen.dart';
 import 'package:cybershield_client/features/shell/app_shell.dart';
 import 'package:cybershield_client/widgets/verdict_style.dart';
 
@@ -259,6 +260,7 @@ void main() {
       expect(scan.phase, ScanPhase.threatFound);
       expect(scan.progress.threatsDetected, 3);
       expect(scan.phase.isTerminal, isTrue);
+      expect(scan.phase.isRunning, isFalse);
 
       scan.start();
       scan.cancel();
@@ -478,6 +480,13 @@ void main() {
         scrollable: dashboardScrollable,
       );
       expect(find.text('File protection'), findsWidgets);
+      // "Scan activity" lives below the fold of the lazy dashboard list, so
+      // scroll it into view before asserting on it.
+      await tester.scrollUntilVisible(
+        find.text('Scan activity'),
+        200,
+        scrollable: dashboardScrollable,
+      );
       expect(find.text('Scan activity'), findsWidgets);
       await tester.scrollUntilVisible(
         find.textContaining('Static analysis only'),
@@ -512,9 +521,28 @@ void main() {
           tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
           3);
       expect(find.text('Protection status'), findsWidgets);
-      expect(find.text('Permissions & capabilities'), findsWidgets);
-      expect(find.text('Battery & background'), findsWidgets);
       expect(find.text('Sign in to activate'), findsWidgets);
+
+      // The capability and battery sections sit below the fold of the lazy
+      // security list — scroll them into view before asserting.
+      final securityScrollable = find
+          .descendant(
+            of: find.byType(SecurityScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      await tester.scrollUntilVisible(
+        find.text('Permissions & capabilities'),
+        200,
+        scrollable: securityScrollable,
+      );
+      expect(find.text('Permissions & capabilities'), findsWidgets);
+      await tester.scrollUntilVisible(
+        find.text('Battery & background'),
+        200,
+        scrollable: securityScrollable,
+      );
+      expect(find.text('Battery & background'), findsWidgets);
 
       // Settings.
       await tester.tap(nav('Settings'));
@@ -585,8 +613,10 @@ void main() {
           tester.widget<NavigationRail>(find.byType(NavigationRail))
               .selectedIndex,
           4);
-      // The Intel page's own search card is reachable on the desktop rail.
-      expect(find.text('Search the reputation cache'), findsWidgets);
+      // The Intel page is reachable from the desktop rail. With no session it
+      // shows its honest signed-out state (the reputation search card is
+      // account-gated), which still proves the rail navigated there.
+      expect(find.text('Sign in to search threat intelligence'), findsWidgets);
     });
   });
 }

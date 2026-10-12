@@ -9,6 +9,7 @@ used for integrity decisions, and both are collision-broken.
 from __future__ import annotations
 
 import hashlib
+import hmac
 from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
@@ -91,9 +92,14 @@ def hash_stream(stream: BinaryIO) -> FileHashes:
 
 
 def verify_integrity(path: Path, expected_sha256: str) -> bool:
-    """Constant-time-ish comparison of a file against an expected digest."""
+    """Constant-time comparison of a file against an expected digest.
+
+    Uses :func:`hmac.compare_digest` so the comparison does not leak timing
+    information about the expected digest. ``hashlib`` has no
+    ``compare_digest``; the previous implementation raised ``AttributeError``.
+    """
     computed = hash_file(path).sha256
-    return hashlib.compare_digest(computed, expected_sha256.lower())
+    return hmac.compare_digest(computed, expected_sha256.lower())
 
 
 def is_valid_hash(value: str, algorithm: str = "sha256") -> bool:
