@@ -112,6 +112,11 @@ It creates `admin@cybershield.dev` (administrator) and
 are printed by the script. Sign in with those credentials in the app's sign-in
 sheet and the session is remembered on the device.
 
+For a one-tap demo sign-in, the sign-in sheet pre-fills the `analyst` account
+by default (`AppConfig.demoLogin`, `--dart-define=DEMO_LOGIN=false` to disable).
+It is a development convenience only: set `DEMO_LOGIN=false` (or override
+`DEMO_EMAIL`/`DEMO_PASSWORD`) for any real build.
+
 ## Verify
 
 ```sh

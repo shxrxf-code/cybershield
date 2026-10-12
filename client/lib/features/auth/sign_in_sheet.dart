@@ -44,6 +44,20 @@ class _SignInSheetState extends State<SignInSheet> {
   bool _submitting = false;
   String? _error;
 
+  /// A dev-only convenience: when demo login is enabled (see [AppConfig]) the
+  /// sign-in sheet arrives pre-filled so a reviewer can start a session with a
+  /// single tap. Set ``--dart-define=DEMO_LOGIN=false`` for real builds.
+  bool get _demoPrefill => AppConfig.demoLogin;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_demoPrefill) {
+      _email.text = AppConfig.demoEmail;
+      _password.text = AppConfig.demoPassword;
+    }
+  }
+
   @override
   void dispose() {
     _email.dispose();
@@ -151,14 +165,40 @@ class _SignInSheetState extends State<SignInSheet> {
             ),
             const SizedBox(height: 16),
             if (_mode == _SignInMode.credentials) ...[
+              if (_demoPrefill) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.bolt_rounded,
+                          size: 18, color: scheme.onPrimaryContainer),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Demo credentials are pre-filled — just tap Sign in.',
+                          style: TextStyle(color: scheme.onPrimaryContainer),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               TextField(
                 controller: _email,
                 enabled: !_submitting,
                 keyboardType: TextInputType.emailAddress,
                 autocorrect: false,
                 textInputAction: TextInputAction.next,
+                onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
                   labelText: 'Email',
+                  hintText: 'you@example.com',
                   prefixIcon: Icon(Icons.mail_outline_rounded, size: 20),
                 ),
               ),
@@ -168,11 +208,13 @@ class _SignInSheetState extends State<SignInSheet> {
                 enabled: !_submitting,
                 obscureText: true,
                 textInputAction: TextInputAction.done,
+                onChanged: (_) => setState(() {}),
                 onSubmitted: (_) {
                   if (_canSubmit) _submit();
                 },
                 decoration: const InputDecoration(
                   labelText: 'Password',
+                  hintText: 'Your password',
                   prefixIcon: Icon(Icons.lock_outline_rounded, size: 20),
                 ),
               ),
@@ -183,6 +225,7 @@ class _SignInSheetState extends State<SignInSheet> {
                 obscureText: _obscure,
                 autocorrect: false,
                 textInputAction: TextInputAction.done,
+                onChanged: (_) => setState(() {}),
                 onSubmitted: (_) {
                   if (_canSubmit) _submit();
                 },
