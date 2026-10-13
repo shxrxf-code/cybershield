@@ -9,6 +9,7 @@ export interface AlertState {
   alerts: ThreatAlert[];
   addAlert: (alert: ThreatAlert) => void;
   markRead: (id: string) => void;
+  markUnread: (id: string) => void;
   markAllRead: () => void;
   removeAlert: (id: string) => void;
   clear: () => void;
@@ -23,6 +24,10 @@ export const useAlertStore = create<AlertState>((set, get) => ({
   markRead: (id) =>
     set((state) => ({
       alerts: state.alerts.map((a) => (a.id === id ? { ...a, isRead: true } : a)),
+    })),
+  markUnread: (id) =>
+    set((state) => ({
+      alerts: state.alerts.map((a) => (a.id === id ? { ...a, isRead: false } : a)),
     })),
   markAllRead: () => set((state) => ({ alerts: state.alerts.map((a) => ({ ...a, isRead: true })) })),
   removeAlert: (id) => set((state) => ({ alerts: state.alerts.filter((a) => a.id !== id) })),

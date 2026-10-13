@@ -8,8 +8,8 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| 0 | Toolchain + monorepo scaffolding | 🟡 |
-| 1 | Design system, theme, navigation, 16 screens | ⬜ |
+| 0 | Toolchain + monorepo scaffolding | ✅ |
+| 1 | Design system, theme, navigation, 16 screens | ✅ |
 | 2 | Local SQLite data layer + repositories + stores | ⬜ |
 | 3 | Backend API (Express + TS + DB + providers + tests) | ✅ |
 | 4 | URL scanner end-to-end | ⬜ |
@@ -26,13 +26,21 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 - [x] Local JDK 17 (Temurin) installed & pinned
 - [x] React Native project generated under `mobile/`
 - [x] Backend project generated under `backend/`
-- [ ] Verified: `tsc --noEmit` in both packages (backend ✅, mobile pending)
+- [x] Verified: `tsc --noEmit` in both packages (backend ✅, mobile ✅)
+- [ ] Android APK build verified on device (moved to Phase 10)
 
 ### Phase 1 — Design system & navigation
-- [ ] Design tokens (colour, spacing, radius, typography, elevation)
-- [ ] Themed components (Card, Button, Badge, Gauge, StatTile, ListRow…)
-- [ ] React Navigation (native stack) with typed params
-- [ ] All 16 screens as real screens with loading / empty / error states
+- [x] Design tokens (colour, spacing, radius, typography, elevation)
+- [x] Themed components (Card, Button, Badge, Gauge, StatTile, ListRow…)
+- [x] React Navigation (native stack + bottom tabs) with typed params
+- [x] All 16 screens present with honest loading / empty / error states
+- [x] Verified: `tsc --noEmit` clean, `eslint` 0 errors, Jest renders the app tree
+
+> **Note on honesty:** native-dependent screens (device/file/app scan, message
+> monitoring, URL reputation) render their real interface but keep their action
+> disabled and state plainly that the capability is not in this build. Nothing
+> is simulated and no verdict, score or row is invented. The single switchboard
+> for this is `mobile/src/capabilities.ts`.
 
 ### Phase 2 — Local data layer
 - [ ] SQLite bootstrap + migrations

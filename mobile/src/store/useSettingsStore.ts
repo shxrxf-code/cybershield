@@ -12,11 +12,14 @@ import type { ColorScheme } from '../theme/tokens';
 export interface SettingsState extends SecuritySettings {
   /** `undefined` follows the device colour scheme. */
   colorScheme?: ColorScheme;
+  /** Whether the first-run introduction has been completed. In-memory until Phase 2 persists it. */
+  onboardingComplete: boolean;
   setNotificationMonitoring: (value: boolean) => void;
   setBackgroundProtection: (value: boolean) => void;
   setAlertNotifications: (value: boolean) => void;
   setPrivacyPreference: <K extends keyof PrivacyPreferences>(key: K, value: PrivacyPreferences[K]) => void;
   setColorScheme: (scheme: ColorScheme | undefined) => void;
+  completeOnboarding: () => void;
   reset: () => void;
 }
 
@@ -36,6 +39,7 @@ const DEFAULTS: SecuritySettings = {
 export const useSettingsStore = create<SettingsState>((set) => ({
   ...DEFAULTS,
   colorScheme: undefined,
+  onboardingComplete: false,
   setNotificationMonitoring: (value) => set({ notificationMonitoring: value }),
   setBackgroundProtection: (value) => set({ backgroundProtection: value }),
   setAlertNotifications: (value) => set({ alertNotifications: value }),
@@ -44,5 +48,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       privacyPreferences: { ...state.privacyPreferences, [key]: value },
     })),
   setColorScheme: (scheme) => set({ colorScheme: scheme }),
-  reset: () => set({ ...DEFAULTS, colorScheme: undefined }),
+  completeOnboarding: () => set({ onboardingComplete: true }),
+  reset: () => set({ ...DEFAULTS, colorScheme: undefined, onboardingComplete: false }),
 }));

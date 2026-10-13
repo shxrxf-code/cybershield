@@ -4,6 +4,7 @@ import { useTheme } from '../theme';
 import { AppText, Button, Card, Screen } from '../components/ui';
 import { BellRing, Lock, ShieldCheck, TriangleAlert } from 'lucide-react-native';
 import { useRootNavigation } from '../navigation/hooks';
+import { useSettingsStore } from '../store';
 import { APP_NAME, PRIVACY_COMMITMENTS } from '../config';
 
 const STEP_COUNT = 3;
@@ -16,9 +17,13 @@ const STEP_COUNT = 3;
 export function OnboardingScreen(): React.JSX.Element {
   const theme = useTheme();
   const navigation = useRootNavigation();
+  const completeOnboarding = useSettingsStore((s) => s.completeOnboarding);
   const [step, setStep] = useState(0);
 
-  const finish = () => navigation.replace('MainTabs');
+  const finish = () => {
+    completeOnboarding();
+    navigation.replace('MainTabs');
+  };
 
   const dots = useMemo(
     () =>

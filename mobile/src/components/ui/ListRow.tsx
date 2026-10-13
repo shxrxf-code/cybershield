@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import { AppText } from './Text';
 
@@ -63,7 +64,11 @@ export function ListRow({
           </AppText>
         ) : null}
       </View>
-      {trailing ? <View>{trailing}</View> : null}
+      {trailing ? (
+        <View>{trailing}</View>
+      ) : onPress && showChevron ? (
+        <ChevronRight size={18} color={theme.colors.textTertiary} />
+      ) : null}
     </View>
   );
 
