@@ -1,3 +1,4 @@
+/* eslint-env jest */
 import {
   SEVERITY_ORDER,
   categoryLabel,

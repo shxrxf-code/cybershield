@@ -1,6 +1,7 @@
 /**
  * @format
  */
+/* eslint-env jest */
 
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';

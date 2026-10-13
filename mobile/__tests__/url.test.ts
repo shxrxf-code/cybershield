@@ -1,3 +1,4 @@
+/* eslint-env jest */
 import { parseWebUrl, formatParsedUrl } from '../src/utils/url';
 
 /**

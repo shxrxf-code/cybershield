@@ -44,6 +44,7 @@ export interface FileScanResponse {
   target: string;
   status: 'completed' | 'pending';
   threatLevel: 'SAFE' | 'SUSPICIOUS' | 'MALICIOUS' | 'UNKNOWN';
+  threatType?: string;
   detectionReason?: string;
   scannedAt: string;
 }
