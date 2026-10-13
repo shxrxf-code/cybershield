@@ -12,7 +12,7 @@ import {
   SectionHeader,
   SettingRow,
 } from '../components/ui';
-import { Bell, ChevronRight, FileBarChart, Info, KeyRound, Moon, ShieldCheck, Sun, Monitor, Lock } from 'lucide-react-native';
+import { Bell, ChevronRight, ClipboardList, Info, KeyRound, Moon, ShieldCheck, Sun, Monitor, Lock } from 'lucide-react-native';
 import { useRootNavigation } from '../navigation/hooks';
 import { useSettingsStore } from '../store';
 import type { ColorScheme } from '../theme/tokens';
@@ -121,7 +121,7 @@ export function SettingsScreen(): React.JSX.Element {
             <ListRow
               title="Security report"
               subtitle="A summary of your protection and findings"
-              leading={<FileBarChart size={20} color={theme.colors.textSecondary} />}
+              leading={<ClipboardList size={20} color={theme.colors.textSecondary} />}
               trailing={<ChevronRight size={18} color={theme.colors.textTertiary} />}
               onPress={() => navigation.navigate('Report')}
             />

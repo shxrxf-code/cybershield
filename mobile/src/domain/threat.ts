@@ -120,3 +120,13 @@ export function scanTypeLabel(scanType: string): string {
 export function isThreat(status: VerdictStatus): boolean {
   return status === 'MALICIOUS' || status === 'SUSPICIOUS';
 }
+
+/**
+ * Map a presentation tone to one of the concrete colour roles that exist on
+ * `ColorTokens`. `info` has no dedicated dot colour, so it falls back to
+ * `unknown` (neutral grey). Keeps status dots consistent across screens.
+ */
+export function toneDotRole(tone: ThreatTone): 'safe' | 'suspicious' | 'malicious' | 'unknown' {
+  if (tone === 'info') return 'unknown';
+  return tone;
+}
