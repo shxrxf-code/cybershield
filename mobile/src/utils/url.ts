@@ -37,6 +37,19 @@ function isPlausibleHost(host: string): boolean {
   return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(host);
 }
 
+/** A leading `token:` that is a URI scheme rather than a `host:port` pair. */
+function readLeadingScheme(value: string): { scheme: string; rest: string } | null {
+  const bare = /^([a-zA-Z][a-zA-Z0-9+.-]*):(.*)$/.exec(value);
+  if (!bare) return null;
+  const scheme = bare[1].toLowerCase();
+  const rest = bare[2] ?? '';
+  // A digits-only tail after the colon (`localhost:3000`) is a port, and a dot
+  // in the token (`example.com:443`) makes it a host — neither is a scheme.
+  const looksLikePort = /^\d{1,5}([/?#]|$)/.test(rest);
+  if (scheme.includes('.') || looksLikePort) return null;
+  return { scheme, rest };
+}
+
 export function parseWebUrl(input: string): UrlParseResult {
   const trimmed = input.trim();
   if (trimmed.length === 0) {
@@ -46,7 +59,23 @@ export function parseWebUrl(input: string): UrlParseResult {
     return { ok: false, reason: 'A web address cannot contain spaces.' };
   }
 
-  const match = URL_PATTERN.exec(trimmed);
+  // Reject non-web schemes up front (javascript:, data:, intent:, mailto: …)
+  // and normalise a bare http(s) scheme to the `scheme://` form we parse below.
+  let working = trimmed;
+  const leading = readLeadingScheme(trimmed);
+  if (leading) {
+    if (leading.scheme !== 'http' && leading.scheme !== 'https') {
+      return {
+        ok: false,
+        reason: `Only http and https links can be checked (found "${leading.scheme}").`,
+      };
+    }
+    working = leading.rest.startsWith('//')
+      ? `${leading.scheme}:${leading.rest}`
+      : `${leading.scheme}://${leading.rest}`;
+  }
+
+  const match = URL_PATTERN.exec(working);
   if (!match) {
     return { ok: false, reason: 'That does not look like a web address.' };
   }

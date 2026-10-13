@@ -2,20 +2,26 @@ import React, { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useTheme } from '../theme';
 import { AlertBanner, AppText, Badge, Button, Card, KeyValue, Screen, SectionHeader } from '../components/ui';
-import { CircleAlert, Info as InfoIcon, Link2, Search, ShieldCheck } from 'lucide-react-native';
+import { CircleAlert, Info as InfoIcon, Link2, Search, ShieldCheck, TriangleAlert } from 'lucide-react-native';
 import { useRootNavigation } from '../navigation/hooks';
 import { parseWebUrl, type ParsedUrl } from '../utils/url';
 import { capabilities } from '../capabilities';
+import { scanUrl } from '../api';
+import type { UrlScanResponse } from '../api/client';
 
 interface LocalResult {
   parsed: ParsedUrl;
   checkedAt: string;
 }
 
+interface ReputationResult extends UrlScanResponse {
+  source: 'backend';
+}
+
 /**
  * Checks a link. The local syntax analysis runs for real and offline; the
  * reputation lookup (Google Safe Browsing, URLhaus, VirusTotal) is a backend
- * feature that is not connected in this build, so no verdict is invented.
+ * feature that is connected when `capabilities.urlReputation` is true.
  */
 export function UrlScannerScreen(): React.JSX.Element {
   const theme = useTheme();
@@ -24,16 +30,36 @@ export function UrlScannerScreen(): React.JSX.Element {
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<LocalResult | null>(null);
+  const [reputation, setReputation] = useState<ReputationResult | null>(null);
+  const [checking, setChecking] = useState(false);
 
-  const onCheck = () => {
+  const onCheck = async () => {
     const parsed = parseWebUrl(value);
     if (!parsed.ok || !parsed.url) {
       setError(parsed.reason ?? 'That address could not be read.');
       setResult(null);
+      setReputation(null);
       return;
     }
     setError(null);
-    setResult({ parsed: parsed.url, checkedAt: new Date().toISOString() });
+    const localResult = { parsed: parsed.url, checkedAt: new Date().toISOString() };
+    setResult(localResult);
+
+    if (!capabilities.urlReputation) {
+      return;
+    }
+
+    setChecking(true);
+    setReputation(null);
+    try {
+      const apiResult = await scanUrl({ url: value });
+      setReputation({ ...apiResult, source: 'backend' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Network error';
+      setError(`Reputation check failed: ${message}`);
+    } finally {
+      setChecking(false);
+    }
   };
 
   const onClear = () => {
@@ -132,6 +158,53 @@ export function UrlScannerScreen(): React.JSX.Element {
                 <KeyValue label="Checked" value={new Date(result.checkedAt).toLocaleString()} />
               </View>
             </Card>
+
+            {reputation ? (
+              <View>
+                <SectionHeader title="Reputation verdict" subtitle="From the ThreatGuard backend" />
+                <Card flush tone={severityToneFromLevel(reputation.threatLevel)}>
+                  <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+                      {iconForLevel(reputation.threatLevel, theme)}
+                      <AppText variant="bodyStrong">
+                        {reputation.threatLevel === 'SAFE'
+                          ? 'No threat found'
+                          : reputation.threatLevel === 'UNKNOWN'
+                            ? 'Unverified'
+                            : `${reputation.threatLevel} threat`}
+                      </AppText>
+                      <Badge
+                        label={reputation.threatLevel === 'SAFE' ? 'Safe' : reputation.threatLevel}
+                        tone={toneForLevel(reputation.threatLevel)}
+                        size="sm"
+                      />
+                    </View>
+                    {reputation.detectionReason ? (
+                      <AppText variant="body" color="secondary">{reputation.detectionReason}</AppText>
+                    ) : null}
+                    <View style={{ height: 1, backgroundColor: theme.colors.border }} />
+                    <View style={{ paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }}>
+                      <KeyValue label="Threat type" value={reputation.threatType ?? '—'} />
+                      <KeyValue label="Scanned" value={new Date(reputation.scannedAt).toLocaleString()} />
+                    </View>
+                  </View>
+                </Card>
+              </View>
+            ) : checking ? (
+              <AlertBanner
+                tone="info"
+                icon={<InfoIcon size={20} color={theme.colors.info} />}
+                title="Checking reputation…"
+                message="The ThreatGuard backend is looking up this link with Safe Browsing, URLhaus and VirusTotal."
+              />
+            ) : capabilities.urlReputation ? (
+              <AlertBanner
+                tone="info"
+                icon={<InfoIcon size={20} color={theme.colors.info} />}
+                title="Run a check to get a reputation verdict"
+                message={'Tap "Check link" to send the address to the ThreatGuard backend.'}
+              />
+            ) : null}
           </View>
         ) : null}
 
@@ -162,4 +235,43 @@ export function UrlScannerScreen(): React.JSX.Element {
       </View>
     </Screen>
   );
+}
+
+function toneForLevel(level: string): 'safe' | 'suspicious' | 'malicious' | 'unknown' {
+  switch (level) {
+    case 'SAFE':
+      return 'safe';
+    case 'MALICIOUS':
+      return 'malicious';
+    case 'SUSPICIOUS':
+      return 'suspicious';
+    default:
+      return 'unknown';
+  }
+}
+
+function severityToneFromLevel(level: string): 'safe' | 'suspicious' | 'malicious' | 'unknown' | 'info' {
+  switch (level) {
+    case 'SAFE':
+      return 'safe';
+    case 'MALICIOUS':
+      return 'malicious';
+    case 'SUSPICIOUS':
+      return 'suspicious';
+    default:
+      return 'info';
+  }
+}
+
+function iconForLevel(level: string, theme: ReturnType<typeof useTheme>): React.ReactNode {
+  switch (level) {
+    case 'SAFE':
+      return <ShieldCheck size={20} color={theme.colors.safe} />;
+    case 'MALICIOUS':
+      return <TriangleAlert size={20} color={theme.colors.malicious} />;
+    case 'SUSPICIOUS':
+      return <TriangleAlert size={20} color={theme.colors.suspicious} />;
+    default:
+      return <ShieldCheck size={20} color={theme.colors.unknown} />;
+  }
 }
