@@ -1,0 +1,21 @@
+{
+  "name": "mobile-threatguard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mobile ThreatGuard – AI-assisted Android antivirus & cyber threat detection system (monorepo root)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "backend:install": "npm --prefix backend install",
+    "backend:dev": "npm --prefix backend run dev",
+    "backend:build": "npm --prefix backend run build",
+    "backend:test": "npm --prefix backend test",
+    "mobile:install": "npm --prefix mobile install",
+    "mobile:start": "npm --prefix mobile start",
+    "mobile:android": "npm --prefix mobile run android",
+    "mobile:test": "npm --prefix mobile test",
+    "typecheck": "npm --prefix backend run typecheck && npm --prefix mobile run typecheck"
+  }
+}
