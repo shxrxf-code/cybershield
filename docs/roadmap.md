@@ -12,8 +12,8 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 | 1 | Design system, theme, navigation, 16 screens | ✅ |
 | 2 | Local SQLite data layer + repositories + stores | ⬜ |
 | 3 | Backend API (Express + TS + DB + providers + tests) | ✅ |
-| 4 | URL scanner end-to-end | ⬜ |
-| 5 | File scanner (PDF / image / APK) + native access | ⬜ |
+| 4 | URL scanner end-to-end | 🟡 |
+| 5 | File scanner (PDF / image / APK) + native access | 🟡 |
 | 6 | Kotlin notification monitoring + analyzer | ⬜ |
 | 7 | Real-time alert system | ⬜ |
 | 8 | Full device scan + WorkManager background protection | ⬜ |
@@ -41,6 +41,18 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 > disabled and state plainly that the capability is not in this build. Nothing
 > is simulated and no verdict, score or row is invented. The single switchboard
 > for this is `mobile/src/capabilities.ts`.
+
+### Phase 4 — URL scanner end-to-end
+- [x] Local URL syntax parser (`src/utils/url.ts`) with 13 unit tests
+- [x] API client (`src/api/client.ts`) with `scanUrl` and health check
+- [x] Screen integration (`UrlScannerScreen`) calls backend when capability enabled
+- [x] No fake verdicts — returns "Unverified" until reputation confirms
+
+### Phase 5 — File scanner (PDF / image / APK) + native access
+- [x] API client `scanFileHash` endpoint integration
+- [x] Screen integration (`FileScannerScreen`) with fingerprint lookup flow
+- [ ] Native file picker + SHA-256 streaming hash (needs SAF / MediaStore)
+- [ ] PDF text extraction, image OCR, APK analysis (Phase 5+6)
 
 ### Phase 2 — Local data layer
 - [ ] SQLite bootstrap + migrations
