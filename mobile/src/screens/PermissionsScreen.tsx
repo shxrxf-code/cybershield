@@ -112,7 +112,7 @@ export function PermissionsScreen(): React.JSX.Element {
           tone="info"
           icon={<InfoIcon size={20} color={theme.colors.info} />}
           title="Nothing is requested without a reason"
-          message="File scanning uses the system picker, so it needs no storage permission at all. The remaining native features are not wired up in this build, so only Internet access currently applies."
+          message="File scanning uses the system picker, so it needs no storage permission at all. Installed-app inspection and message monitoring are not available in this build, so Internet access — used only for the optional hash reputation lookup — is the only permission that currently applies."
         />
 
         <View>
