@@ -76,10 +76,10 @@ export function PermissionsScreen(): React.JSX.Element {
       id: 'media',
       title: 'Files and media',
       why: 'Read the documents, images and downloads you choose to have scanned.',
-      ifDenied: 'File and device scans cannot read anything, so they find nothing.',
+      ifDenied: 'You can still scan files; access is granted one document at a time by the system picker.',
       icon: <FileText size={20} color={theme.colors.textSecondary} />,
-      status: capabilities.fileScan ? 'Requested when you scan' : 'Not requested yet',
-      statusTone: 'unknown',
+      status: capabilities.fileScan ? 'Not required — you pick each file' : 'Not requested yet',
+      statusTone: capabilities.fileScan ? 'safe' : 'unknown',
     },
     {
       id: 'packages',
@@ -112,7 +112,7 @@ export function PermissionsScreen(): React.JSX.Element {
           tone="info"
           icon={<InfoIcon size={20} color={theme.colors.info} />}
           title="Nothing is requested without a reason"
-          message="ThreatGuard asks for access only when the matching feature is used. The native features are not wired up in this build, so only the always-on Internet access applies so far."
+          message="File scanning uses the system picker, so it needs no storage permission at all. The remaining native features are not wired up in this build, so only Internet access currently applies."
         />
 
         <View>

@@ -13,9 +13,9 @@
  */
 
 export interface Capabilities {
-  /** On-device quick/full scanning of apps and files (Phase 5 / 8). */
+  /** Enumerating the whole device (installed apps and shared storage). Not implemented. */
   deviceScan: boolean;
-  /** Picking a file and hashing it on-device, then a reputation lookup (Phase 5). */
+  /** Scanning a user-selected file with the on-device engine (SAF + SHA-256 + signatures). */
   fileScan: boolean;
   /** Enumerating installed apps and their permissions (Phase 5). */
   appScan: boolean;
@@ -26,14 +26,14 @@ export interface Capabilities {
 }
 
 /**
- * All flags are false in the current build: only the design system, navigation
- * and the local data model exist. This is the single place that changes as the
- * remaining phases are implemented.
+ * Capability flags. Each flag is only true when the backing implementation
+ * actually exists in this build, so screens never offer an action that cannot
+ * produce a real result.
  */
 export const capabilities: Capabilities = {
-  deviceScan: false,
-  fileScan: false,
-  appScan: false,
-  notificationListener: false,
-  urlReputation: false,
+  deviceScan: false,     // Full-device enumeration not implemented yet
+  fileScan: true,        // On-device FileScanner engine (SAF + SHA-256 + signatures)
+  appScan: false,        // Not yet implemented
+  notificationListener: false, // Not yet implemented
+  urlReputation: true,   // Backend reputation API is available
 };

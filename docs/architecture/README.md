@@ -17,9 +17,11 @@ intelligence behind a single authenticated API.
 │        └──────────────┴───────┬───────┴───────────────────┘              │
 │                               │  typed NativeModules bridge (TS)          │
 │  ┌────────────────────────────▼─────────────────────────────────────┐    │
-│  │              Kotlin native layer (isolated modules)              │    │
-│  │  NotificationMonitorService  FileInspection  Sha256Stream        │    │
-│  │  BackgroundWorkers (WorkManager)  BootReceiver  SafeFileAccess   │    │
+│  │              Native layer (isolated modules)                      │    │
+│  │  scanner/ (FileScannerModule · FileScanner · HashScanner ·        │    │
+│  │            SignatureScanner · ScanResult)                          │    │
+│  │  planned: NotificationMonitorService · BackgroundWorkers ·         │    │
+│  │           BootReceiver · ApkInspector                              │    │
 │  └──────────────────────────────────────────────────────────────────┘    │
 │                               │                                          │
 │  ┌────────────────────────────▼─────────────────────────────────────┐    │
@@ -45,9 +47,9 @@ intelligence behind a single authenticated API.
 
 1. **The mobile app never holds a third-party API key.** All reputation lookups
    go through our backend, which injects the keys server-side.
-2. **Android-specific capability lives only in Kotlin.** TypeScript calls it
-   through one typed bridge module (`ThreatGuardNative`). No JS reads a file or
-   a notification directly.
+2. **Android-specific capability lives only in the native layer.** TypeScript calls
+   it through one typed bridge module per capability (`FileScanner`). No JS reads a
+   file or a notification directly.
 3. **Services are pure where possible.** URL syntax/domain/entropy logic and
    notification scam heuristics are deterministic functions, unit-tested without
    a device.
@@ -63,37 +65,57 @@ mobile/src/
 ├── components/     reusable, presentational (cards, badges, charts…)
 ├── screens/        one folder per screen; containers own data, children don't
 ├── navigation/     navigators, typed route params, deep links
-├── services/       api client, url scanner, file scanner, notif analyzer, alerts
-├── hooks/          useScan, useUrlScan, useThreatAlerts, usePermissions…
-├── store/          Zustand stores (settings, session, scan state machine)
-├── database/       SQLite bootstrap + repositories
-├── utils/          url parsing, formatting, hashing helpers, validation
-├── constants/      package allow-lists, severity maps, endpoints
-├── types/          shared domain types & enums
+├── api/            backend client (URL + file-hash reputation lookups)
+├── native/         typed bridges to native modules (FileScanner*)
+├── hooks/          useFileScanner, useUrlScan, useThreatAlerts…
+├── store/          Zustand stores (settings, scans, alerts)
+├── db/             SQLite bootstrap + repositories + migrations
+├── domain/         verdict/threat mapping & types (pure, tested)
+├── utils/          url parsing, formatting, validation
 └── theme/          design tokens (colors, spacing, typography, radii)
 ```
 
-## Native module map (Kotlin)
+## Native module map
+
+### Implemented — file-scanning engine (`com.threatguard.mobile.scanner`)
+
+A legacy React Native module (works with both architectures), written in Java
+because it uses only `java.io` (the `java.nio.file` API is API 26+ and would
+crash below that; the app's `minSdkVersion` is 24).
+
+```
+mobile/android/app/src/main/java/com/threatguard/mobile/scanner/
+├── FileScannerModule.java     RN bridge: pickFile, scanFile, computeFileHash,
+│                              cancelScan, clearCache, getConstants, progress events
+├── FileScanner.java           orchestration: size/MIME validation, engine options
+├── HashScanner.java           streaming SHA-256 with progress + cancellation
+├── SignatureScanner.java      magic-byte family detection, extension↔content
+│                              consistency, streaming signatures, APK structure
+├── ScanResult.java            status + severity-tagged findings → WritableMap
+└── ScanCancelledException.java
+```
+
+Registration: `FileScannerPackage` is added in `MainApplication.kt`. File access
+goes through the **Storage Access Framework** (`ACTION_OPEN_DOCUMENT`), so the
+manifest requests only `INTERNET` — no storage permission at all. Scan work runs
+on a single-thread executor; progress is delivered with `emitDeviceEvent`
+(bridgeless-safe).
+
+### Planned (later phases)
 
 ```
 mobile/android/app/src/main/java/com/threatguard/mobile/
-├── ThreatGuardModule.kt        NativeModule: JS-callable entry points
-├── ThreatGuardPackage.kt       ReactPackage registration
 ├── notification/
-│   ├── NotificationMonitorService.kt   NotificationListenerService
-│   └── NotificationAnalyzer.kt         scam/phishing heuristics (pure, tested)
-├── files/
-│   ├── FileInspector.kt        signatures, MIME, size, EXIF, PDF structure
-│   ├── Sha256Stream.kt         streaming digest (no full-file buffering)
-│   └── SafeFileAccess.kt       SAF / MediaStore helpers
+│   ├── NotificationMonitorService   NotificationListenerService
+│   └── NotificationAnalyzer         scam/phishing heuristics (pure, tested)
 ├── packages/
-│   └── ApkInspector.kt         PackageManager metadata, permissions, signing
+│   └── ApkInspector                 PackageManager metadata, permissions, signing
 ├── background/
-│   ├── BackgroundProtectionWorker.kt   WorkManager job
-│   ├── BootReceiver.kt                 re-schedule after reboot
-│   └── ScanForegroundService.kt        user-initiated long scans
+│   ├── BackgroundProtectionWorker   WorkManager job
+│   ├── BootReceiver                 re-schedule after reboot
+│   └── ScanForegroundService        user-initiated long scans
 └── alerts/
-    └── AlertNotifier.kt        NotificationManager, dedupe, channels
+    └── AlertNotifier                NotificationManager, dedupe, channels
 ```
 
 ## Backend module map

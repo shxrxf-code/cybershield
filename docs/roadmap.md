@@ -13,7 +13,7 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 | 2 | Local SQLite data layer + repositories + stores | ✅ |
 | 3 | Backend API (Express + TS + DB + providers + tests) | ✅ |
 | 4 | URL scanner end-to-end | 🟡 |
-| 5 | File scanner (PDF / image / APK) + native access | 🟡 |
+| 5 | File scanner (PDF / image / APK) + native access | 🟡 (engine built & verified in build; on-device run pending) |
 | 6 | Kotlin notification monitoring + analyzer | ⬜ |
 | 7 | Real-time alert system | ⬜ |
 | 8 | Full device scan + WorkManager background protection | ⬜ |
@@ -59,15 +59,18 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 - [x] No fake verdicts — returns "Unverified" until reputation confirms
 
 ### Phase 5 — File scanner (PDF / image / APK) + native access
-- [x] API client `scanFileHash` endpoint integration
-- [x] Screen integration (`FileScannerScreen`) with fingerprint lookup flow
-- [ ] Native file picker + SHA-256 streaming hash (needs SAF / MediaStore)
-- [ ] PDF text extraction, image OCR, APK analysis (Phase 5+6)
-
-### Phase 2 — Local data layer
-- [ ] SQLite bootstrap + migrations
-- [ ] Repositories: scans, alerts, settings
-- [ ] Zustand stores wired to repositories
+- [x] Native module scaffold: `FileScannerModule` + `FileScannerPackage`, registered in `MainApplication.kt`
+- [x] SAF picker (`ACTION_OPEN_DOCUMENT`) — needs **no** runtime storage permission
+- [x] Streaming SHA-256 (`HashScanner`) with progress reporting and cancellation
+- [x] Size + MIME validation and extension↔content consistency (`FileScanner`, `SignatureScanner`)
+- [x] Signature scan: EICAR, PDF `/JavaScript` & actions, APK structure checks (high/medium/low findings)
+- [x] Structured results (`ScanResult`) with severity-tagged findings; `clean → UNKNOWN`, never SAFE
+- [x] Progress emitted via `ReactContext.emitDeviceEvent` (bridgeless-safe) with a single-thread executor
+- [x] TypeScript bridge (`src/native/FileScannerNative.ts`), hooks and verdict-merge helpers
+- [x] Unit tests: verdict mapping / merge / bridge degradation (`npx jest` → 79 pass)
+- [x] APK packaging verified: all 7 scanner classes present in `app-debug.apk`
+- [ ] On-device acceptance run of the 16 scenarios in `docs/testing/device-test-plan.md`
+- [ ] PDF text extraction, image OCR, deeper APK analysis (later)
 
 ### Phase 3 — Backend
 - [x] Express app, error envelope, request-id, logger
@@ -77,17 +80,6 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 - [x] SQLite dev / Postgres-ready schema
 - [x] Jest + supertest suite (97 tests: unit `tsc --noEmit` clean + app-level integration)
 - [x] `createApp`/`server.ts` wiring: helmet, CORS, JSON cap, graceful shutdown
-
-### Phase 4 — URL scanner
-- [ ] Local syntax/domain/entropy analysis (device-side, offline-capable)
-- [ ] Backend reputation request + verdict merge
-- [ ] URL Scanner screen, clipboard consent, result cards
-
-### Phase 5 — File scanner
-- [ ] SAF/MediaStore pickers (native)
-- [ ] Signature + MIME + size validation, streaming SHA-256
-- [ ] PDF structural analysis, EXIF inspection, APK inspection
-- [ ] VirusTotal hash lookup via backend (consent-gated)
 
 ### Phase 6 — Notification monitoring
 - [ ] `NotificationListenerService` (Kotlin)

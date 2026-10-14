@@ -1,5 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+      File scanning goes through the Storage Access Framework: the user picks
+      exactly which documents to share, so no runtime storage permission is
+      required. INTERNET is only used for the optional hash reputation lookup.
+    -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application

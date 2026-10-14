@@ -1,60 +1,141 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme';
-import { AlertBanner, AppText, Button, Card, Chip, Screen, SectionHeader } from '../components/ui';
 import {
-  Download,
-  FileCode,
+  AlertBanner,
+  AppText,
+  Badge,
+  Button,
+  Card,
+  Chip,
+  ListRow,
+  ProgressBar,
+  Screen,
+  SectionHeader,
+} from '../components/ui';
+import { FileScanResultCard } from '../components/FileScanResultCard';
+import {
   FileText,
-  Image as ImageIcon,
   Info as InfoIcon,
-  Package,
   Play,
   ScanLine,
   ShieldAlert,
+  Upload,
+  X,
 } from 'lucide-react-native';
 import { useRootNavigation } from '../navigation/hooks';
 import { useScanStore } from '../store';
-import { statusLabel, statusTone } from '../domain/threat';
-import { formatRelativeTime, formatDuration } from '../utils/format';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { statusLabel, statusTone, toneDotRole } from '../domain/threat';
+import { formatBytes, formatDuration, formatRelativeTime } from '../utils/format';
 import { capabilities } from '../capabilities';
 import type { RootStackParamList } from '../navigation/types';
+import { useFileScanner, useMultipleFileScanner } from '../hooks/useFileScanner';
 
-interface ScopeItem {
+interface CoverageItem {
   title: string;
   detail: string;
   icon: React.ReactNode;
 }
 
-const QUICK_SCOPE: ScopeItem[] = [
-  { title: 'Installed apps', detail: 'Permissions and signatures of installed packages', icon: <Package size={20} /> },
-  { title: 'Downloads', detail: 'Recently downloaded documents and archives', icon: <Download size={20} /> },
-  { title: 'Key documents', detail: 'Documents in shared storage', icon: <FileText size={20} /> },
-];
-
-const FULL_SCOPE: ScopeItem[] = [
-  ...QUICK_SCOPE,
-  { title: 'Images and media', detail: 'Photos and media files across storage', icon: <ImageIcon size={20} /> },
-  { title: 'Installable packages', detail: 'APK files that could be installed', icon: <FileCode size={20} /> },
+const COVERAGE: CoverageItem[] = [
+  {
+    title: 'Files you choose',
+    detail: 'Documents, images, archives and APKs selected through the system picker',
+    icon: <FileText size={20} />,
+  },
+  {
+    title: 'On-device checks',
+    detail: 'SHA-256 hashing plus structure and known-signature checks',
+    icon: <ScanLine size={20} />,
+  },
+  {
+    title: 'Optional reputation',
+    detail: 'A SHA-256-only lookup, and only when you have turned it on',
+    icon: <ShieldAlert size={20} />,
+  },
 ];
 
 /**
- * Runs a device scan. The screen is complete and stateful, but the on-device
- * scanning engine is a later phase; until it is present the scan action is
- * disabled and the reason is stated plainly rather than faking progress.
+ * The quick and full scan screens.
+ *
+ * Both run the real on-device engine over files the user explicitly selects:
+ * quick scans one file, full scans several at once. ThreatGuard cannot enumerate
+ * another app's private storage or the whole device, so the screen says so
+ * plainly instead of offering a scan it cannot perform.
  */
 export function DeviceScanScreen(): React.JSX.Element {
   const theme = useTheme();
   const navigation = useRootNavigation();
   const route = useRoute<RouteProp<RootStackParamList, 'DeviceScan'>>();
   const mode = route.params.mode;
+  const isFull = mode === 'full';
 
   const records = useScanStore((s) => s.records);
-  const previous = records.find((r) => r.scanType === mode);
+  const createFromAPI = useScanStore((s) => s.createFromAPI);
+  const shareThreatData = useSettingsStore((s) => s.privacyPreferences.shareThreatData);
 
-  const scope = mode === 'quick' ? QUICK_SCOPE : FULL_SCOPE;
-  const available = capabilities.deviceScan;
+  const single = useFileScanner({ checkReputation: shareThreatData });
+  const multi = useMultipleFileScanner({ checkReputation: shareThreatData });
+  const [savedUris, setSavedUris] = useState<string[]>([]);
+
+  const previous = useMemo(() => records.find((r) => r.scanType === mode), [records, mode]);
+
+  const isAvailable = isFull ? multi.isAvailable : single.isAvailable;
+  const isScanning = isFull ? multi.isScanning : single.isScanning;
+  const isPicking = isFull ? multi.isPicking : single.isPicking;
+  const error = isFull ? multi.error : single.error;
+  const progress = isFull ? multi.progress : single.progress;
+
+  const progressValue = (progress?.percent ?? 0) / 100;
+  const progressLabel =
+    isFull && multi.files.length > 0 && multi.scanningIndex >= 0
+      ? `Scanning file ${multi.scanningIndex + 1} of ${multi.files.length}…`
+      : 'Scanning…';
+
+  const switchMode = (next: 'quick' | 'full') => {
+    if (next === mode) {
+      return;
+    }
+    single.clearSelection();
+    multi.clearSelection();
+    setSavedUris([]);
+    navigation.setParams({ mode: next });
+  };
+
+  const saveOutcome = async (uri: string) => {
+    const outcome = isFull
+      ? multi.outcomes.find((o) => o.uri === uri)
+      : single.outcome?.uri === uri
+        ? single.outcome
+        : null;
+    if (!outcome) {
+      return;
+    }
+    await createFromAPI({
+      scanType: mode,
+      target: outcome.uri,
+      fileHash: outcome.sha256,
+      fileName: outcome.fileName,
+      threatLevel: outcome.verdict,
+      threatType: outcome.findings[0]?.code,
+      detectionReason: outcome.details,
+      durationMs: outcome.durationMs,
+      source: outcome.reputation === 'checked' ? 'backend' : 'local',
+    });
+    setSavedUris((uris) => (uris.includes(uri) ? uris : [...uris, uri]));
+  };
+
+  const saveAll = async () => {
+    for (const outcome of multi.outcomes) {
+      await saveOutcome(outcome.uri);
+    }
+  };
+
+  const threatCount = multi.outcomes.filter(
+    (o) => o.verdict === 'MALICIOUS' || o.verdict === 'SUSPICIOUS',
+  ).length;
 
   return (
     <Screen scroll edges={['left', 'right']}>
@@ -63,63 +144,235 @@ export function DeviceScanScreen(): React.JSX.Element {
           <View style={{ gap: theme.spacing.md }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
               <ScanLine size={24} color={theme.colors.accent} />
-              <AppText variant="heading">{mode === 'quick' ? 'Quick scan' : 'Full scan'}</AppText>
+              <AppText variant="heading">{isFull ? 'Full scan' : 'Quick scan'}</AppText>
             </View>
             <AppText variant="body" color="secondary">
-              {mode === 'quick'
-                ? 'Fast check of installed apps and the files most likely to carry a threat.'
-                : 'Checks all storage, including images, media and installable packages.'}
+              {isFull
+                ? 'Check several files at once. ThreatGuard inspects each one on-device and reports what it found.'
+                : 'Check a single file before you open it. The file is inspected on-device and never modified.'}
             </AppText>
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-              <Chip
-                label="Quick"
-                selected={mode === 'quick'}
-                onPress={() => navigation.setParams({ mode: 'quick' })}
-              />
-              <Chip
-                label="Full"
-                selected={mode === 'full'}
-                onPress={() => navigation.setParams({ mode: 'full' })}
-              />
+              <Chip label="Quick" selected={!isFull} onPress={() => switchMode('quick')} />
+              <Chip label="Full" selected={isFull} onPress={() => switchMode('full')} />
             </View>
           </View>
         </Card>
 
-        {!available ? (
+        <AlertBanner
+          tone="info"
+          icon={<InfoIcon size={20} color={theme.colors.info} />}
+          title="What this build can scan"
+          message="Full-device scanning of installed apps and shared storage is not enabled in this build. ThreatGuard inspects the files you pick, one at a time."
+        />
+
+        {!isAvailable ? (
           <AlertBanner
             tone="info"
             icon={<InfoIcon size={20} color={theme.colors.info} />}
-            title="Scanning engine not in this build"
-            message="On-device scanning is wired up in a later phase. Until then this screen cannot produce a real result, so the scan action stays disabled."
+            title="Scanning is unavailable here"
+            message="The native scanning engine is built for Android only. On this platform no file result is produced."
+          />
+        ) : isFull ? (
+          <View style={{ gap: theme.spacing.md }}>
+            <Button
+              label="Choose files"
+              variant="secondary"
+              icon={<Upload size={18} />}
+              fullWidth
+              onPress={() => {
+                void multi.pickFiles(true);
+              }}
+              disabled={isScanning || isPicking}
+              loading={isPicking}
+            />
+
+            {multi.files.length > 0 ? (
+              <Card flush>
+                {multi.files.map((file, index) => (
+                  <View key={file.uri}>
+                    {index > 0 ? (
+                      <View
+                        style={{
+                          height: 1,
+                          marginLeft: theme.spacing.lg,
+                          backgroundColor: theme.colors.border,
+                        }}
+                      />
+                    ) : null}
+                    <ListRow title={file.name} showChevron={false} />
+                  </View>
+                ))}
+              </Card>
+            ) : null}
+
+            <Button
+              label={multi.files.length > 1 ? `Scan ${multi.files.length} files` : 'Scan files'}
+              icon={<Play size={18} />}
+              fullWidth
+              onPress={multi.scanAll}
+              disabled={multi.files.length === 0 || isScanning || isPicking}
+              loading={isScanning}
+            />
+
+            {isScanning ? (
+              <View style={{ gap: theme.spacing.sm }}>
+                <ProgressBar value={progressValue} label={progressLabel} showPercent tone="info" />
+                <Button
+                  label="Cancel scan"
+                  variant="ghost"
+                  icon={<X size={18} />}
+                  onPress={() => {
+                    void multi.cancel();
+                  }}
+                />
+              </View>
+            ) : null}
+
+            {multi.outcomes.length > 0 ? (
+              <View style={{ gap: theme.spacing.md }}>
+                <SectionHeader
+                  title="Results"
+                  subtitle={`${multi.outcomes.length} scanned · ${threatCount} need attention`}
+                />
+                <Card flush>
+                  {multi.outcomes.map((outcome, index) => (
+                    <View key={outcome.uri}>
+                      {index > 0 ? (
+                        <View
+                          style={{
+                            height: 1,
+                            marginLeft: theme.spacing.lg,
+                            backgroundColor: theme.colors.border,
+                          }}
+                        />
+                      ) : null}
+                      <ListRow
+                        title={outcome.fileName}
+                        subtitle={outcome.details}
+                        meta={`${statusLabel(outcome.verdict)} · ${formatBytes(outcome.fileSize)}`}
+                        showChevron={false}
+                        leading={
+                          <View
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: 5,
+                              backgroundColor:
+                                theme.colors[toneDotRole(statusTone(outcome.verdict))],
+                            }}
+                          />
+                        }
+                        trailing={<Badge label={statusLabel(outcome.verdict)} tone={statusTone(outcome.verdict)} size="sm" />}
+                      />
+                    </View>
+                  ))}
+                </Card>
+                <Button
+                  label="Save all to history"
+                  onPress={saveAll}
+                  disabled={savedUris.length === multi.outcomes.length}
+                  fullWidth
+                />
+              </View>
+            ) : null}
+          </View>
+        ) : (
+          <View style={{ gap: theme.spacing.md }}>
+            <Button
+              label={single.selected ? 'Choose a different file' : 'Choose a file'}
+              variant="secondary"
+              icon={<Upload size={18} />}
+              fullWidth
+              onPress={single.pickFile}
+              disabled={isScanning || isPicking}
+              loading={isPicking}
+            />
+
+            {single.selected ? (
+              <Card>
+                <View style={{ padding: theme.spacing.lg, gap: theme.spacing.sm }}>
+                  <AppText variant="caption" color="secondary">
+                    Selected file
+                  </AppText>
+                  <AppText variant="bodyStrong">{single.selected.name}</AppText>
+                </View>
+              </Card>
+            ) : null}
+
+            <Button
+              label="Scan selected file"
+              icon={<Play size={18} />}
+              fullWidth
+              onPress={single.scanSelectedFile}
+              disabled={!single.selected || isScanning || isPicking}
+              loading={isScanning}
+            />
+
+            {isScanning ? (
+              <View style={{ gap: theme.spacing.sm }}>
+                <ProgressBar value={progressValue} label={progressLabel} showPercent tone="info" />
+                <Button
+                  label="Cancel scan"
+                  variant="ghost"
+                  icon={<X size={18} />}
+                  onPress={() => {
+                    void single.cancel();
+                  }}
+                />
+              </View>
+            ) : null}
+
+            {single.outcome ? (
+              <View style={{ gap: theme.spacing.md }}>
+                <SectionHeader title="Result" />
+                <FileScanResultCard
+                  outcome={single.outcome}
+                  onScanAnother={() => {
+                    setSavedUris([]);
+                    single.clearSelection();
+                  }}
+                  onSave={() => {
+                    void saveOutcome(single.outcome!.uri);
+                  }}
+                  saved={savedUris.includes(single.outcome.uri)}
+                />
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        {error ? (
+          <AlertBanner
+            tone="suspicious"
+            title="Scan problem"
+            message={error}
+            action={
+              <Button
+                label="Dismiss"
+                variant="ghost"
+                size="sm"
+                onPress={isFull ? multi.clearError : single.clearError}
+              />
+            }
           />
         ) : null}
 
-        {previous ? (
-          <View>
-            <SectionHeader title="Last result" subtitle={formatRelativeTime(previous.scannedAt)} />
-            <Card
-              tone={previous.threatsFound > 0 ? statusTone(previous.threatLevel) : 'safe'}
-              onPress={() => navigation.navigate('ScanDetail', { scanId: previous.id })}
-            >
-              <View style={{ gap: theme.spacing.xs }}>
-                <AppText variant="bodyStrong">
-                  {previous.threatsFound > 0
-                    ? `${previous.threatsFound} ${previous.threatsFound === 1 ? 'threat' : 'threats'} found`
-                    : 'No threats found'}
-                </AppText>
-                <AppText variant="caption" color="secondary">
-                  {previous.filesChecked} checked · {formatDuration(previous.durationMs)} ·{' '}
-                  {statusLabel(previous.threatLevel)}
-                </AppText>
-              </View>
-            </Card>
-          </View>
+        {!capabilities.appScan ? (
+          <Card>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+              <ShieldAlert size={20} color={theme.colors.textSecondary} />
+              <AppText variant="caption" color="secondary" style={{ flex: 1 }}>
+                Installed-app inspection and background storage scanning are planned for a later
+                phase. This screen only reports results from the files you select.
+              </AppText>
+            </View>
+          </Card>
         ) : null}
 
         <View>
-          <SectionHeader title="What this scan covers" />
+          <SectionHeader title="What ThreatGuard inspects" />
           <Card flush>
-            {scope.map((item, index) => (
+            {COVERAGE.map((item, index) => (
               <View
                 key={item.title}
                 style={{
@@ -143,26 +396,27 @@ export function DeviceScanScreen(): React.JSX.Element {
           </Card>
         </View>
 
-        {available ? (
-          <Button
-            label={`Start ${mode} scan`}
-            icon={<Play size={18} color={theme.colors.onAccent} />}
-            fullWidth
-            onPress={() => undefined}
-          />
-        ) : (
-          <Button label="Start scan" disabled fullWidth onPress={() => undefined} />
-        )}
-
-        <Card>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-            <ShieldAlert size={20} color={theme.colors.textSecondary} />
-            <AppText variant="caption" color="secondary" style={{ flex: 1 }}>
-              ThreatGuard never opens or runs a file it inspects. Results only tell you what was
-              found and what to do next.
-            </AppText>
+        {previous ? (
+          <View>
+            <SectionHeader title="Last result" subtitle={formatRelativeTime(previous.scannedAt)} />
+            <Card
+              tone={previous.threatsFound > 0 ? statusTone(previous.threatLevel) : 'unknown'}
+              onPress={() => navigation.navigate('ScanDetail', { scanId: previous.id })}
+            >
+              <View style={{ gap: theme.spacing.xs }}>
+                <AppText variant="bodyStrong">
+                  {previous.threatsFound > 0
+                    ? `${previous.threatsFound} ${previous.threatsFound === 1 ? 'threat' : 'threats'} found`
+                    : 'No threats found'}
+                </AppText>
+                <AppText variant="caption" color="secondary">
+                  {previous.filesChecked} checked · {formatDuration(previous.durationMs)} ·{' '}
+                  {statusLabel(previous.threatLevel)}
+                </AppText>
+              </View>
+            </Card>
           </View>
-        </Card>
+        ) : null}
       </View>
     </Screen>
   );

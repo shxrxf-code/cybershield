@@ -19,3 +19,28 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+/**
+ * @op-engineering/op-sqlite publishes its Android library with a `release`
+ * build type only, but the app's `debug` variant needs a matching `debug` build
+ * type (and the prefab it produces). Adding it here keeps the fix in versioned
+ * source instead of patching node_modules, which `npm install` would discard.
+ *
+ * This is idempotent: if a future release of the library already declares a
+ * `debug` build type, this block simply reconfigures it.
+ */
+subprojects { subproject ->
+    if (subproject.name == 'op-engineering_op-sqlite') {
+        subproject.plugins.withId('com.android.library') {
+            subproject.android {
+                buildTypes {
+                    debug {
+                        minifyEnabled false
+                        debuggable true
+                    }
+                }
+            }
+        }
+    }
+}
+
