@@ -14,7 +14,7 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 | 3 | Backend API (Express + TS + DB + providers + tests) | ✅ |
 | 4 | URL scanner end-to-end | 🟡 |
 | 5 | File scanner (PDF / image / APK) + native access | 🟡 (engine built & verified in build; on-device run pending) |
-| 6 | Kotlin notification monitoring + analyzer | ⬜ |
+| 6 | Kotlin notification monitoring + analyzer | 🟡 (listener + analyzer built & verified; on-device run pending) |
 | 7 | Real-time alert system | ⬜ |
 | 8 | Full device scan + WorkManager background protection | ⬜ |
 | 9 | History, reports, permissions, settings, about | ⬜ |
@@ -82,9 +82,13 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 - [x] `createApp`/`server.ts` wiring: helmet, CORS, JSON cap, graceful shutdown
 
 ### Phase 6 — Notification monitoring
-- [ ] `NotificationListenerService` (Kotlin)
-- [ ] Scam/phishing heuristic engine + unit tests
-- [ ] Social-protection screen with per-app toggles
+- [x] `NotificationListenerService` (Kotlin) — thin listener; only reads exposed text, never stores full content
+- [x] Scam/phishing heuristic engine (TS `domain/notificationAnalyzer`) — 25 unit tests, `npx tsc --noEmit` clean, never returns `SAFE` (max `SUSPICIOUS`)
+- [x] Social-protection screen with per-app toggles — real status (access granted/connected/monitoring), real per-app mute list, recent findings with signal labels only
+- [x] Native bridge + shared prefs (ignored packages, enabled, seen sources), wired into app root
+- [x] Minimal alert notifier (Phase 7 partial): `postThreatAlert` + POST_NOTIFICATIONS, channel `threatguard_alerts`
+- [ ] On-device acceptance of notification scenarios in `docs/testing/device-test-plan.md`
+- [ ] `:app:assembleDebug` + APK build verification for new Kotlin classes (to complete)
 
 ### Phase 7 — Alerts
 - [ ] `AlertNotifier` with channels + dedupe

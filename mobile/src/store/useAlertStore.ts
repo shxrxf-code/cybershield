@@ -11,7 +11,7 @@ export interface AlertState {
   loading: boolean;
   error: string | null;
 
-  addAlert: (alert: ThreatAlert) => Promise<void>;
+  addAlert: (alert: Omit<ThreatAlert, 'id' | 'createdAt'>) => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markUnread: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;

@@ -23,6 +23,7 @@ export interface SettingsState extends SecuritySettings {
   setNotificationMonitoring: (value: boolean) => Promise<void>;
   setBackgroundProtection: (value: boolean) => Promise<void>;
   setAlertNotifications: (value: boolean) => Promise<void>;
+  setNotificationIgnoredPackages: (packages: string[]) => Promise<void>;
   setPrivacyPreference: <K extends keyof PrivacyPreferences>(key: K, value: PrivacyPreferences[K]) => Promise<void>;
   setColorScheme: (scheme: StoredColorScheme) => Promise<void>;
   completeOnboarding: () => Promise<void>;
@@ -40,6 +41,7 @@ const DEFAULTS: SecuritySettings = {
   notificationMonitoring: false,
   backgroundProtection: false,
   alertNotifications: true,
+  notificationIgnoredPackages: [],
   privacyPreferences: DEFAULT_PRIVACY,
 };
 
@@ -74,6 +76,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     try {
       await settingsRepository.set('alertNotifications', value);
       set({ alertNotifications: value });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to save setting' });
+      throw err;
+    }
+  },
+
+  setNotificationIgnoredPackages: async (packages) => {
+    try {
+      await settingsRepository.set('notificationIgnoredPackages', packages);
+      set({ notificationIgnoredPackages: packages });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Failed to save setting' });
       throw err;
@@ -134,6 +146,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         notificationMonitoring: all.notificationMonitoring ?? DEFAULTS.notificationMonitoring,
         backgroundProtection: all.backgroundProtection ?? DEFAULTS.backgroundProtection,
         alertNotifications: all.alertNotifications ?? DEFAULTS.alertNotifications,
+        notificationIgnoredPackages: all.notificationIgnoredPackages ?? DEFAULTS.notificationIgnoredPackages,
         privacyPreferences: all.privacyPreferences ?? DEFAULTS.privacyPreferences,
         colorScheme: all.colorScheme,
         onboardingComplete: all.onboardingComplete ?? false,

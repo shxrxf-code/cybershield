@@ -16,6 +16,7 @@ import { toNavigationTheme } from './src/navigation/navigationTheme';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useSettingsStore } from './src/store';
 import { getDB } from './src/db';
+import { startNotificationMonitor } from './src/notifications/monitor';
 
 function Root(): React.JSX.Element {
   const theme = useTheme();
@@ -40,6 +41,16 @@ function Root(): React.JSX.Element {
       refreshSettings();
     }
   }, [dbReady, refreshSettings]);
+
+  // Start message monitoring once settings have loaded. The runtime reads the
+  // user's preferences and mirrors them to the native listener; it keeps
+  // running while the process is alive, not only while a screen is open.
+  useEffect(() => {
+    if (!dbReady) {
+      return undefined;
+    }
+    return startNotificationMonitor();
+  }, [dbReady]);
 
   if (!dbReady) {
     return (

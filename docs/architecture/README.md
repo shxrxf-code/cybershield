@@ -101,22 +101,22 @@ manifest requests only `INTERNET` — no storage permission at all. Scan work ru
 on a single-thread executor; progress is delivered with `emitDeviceEvent`
 (bridgeless-safe).
 
-### Planned (later phases)
+### Implemented — notification monitoring (`com.threatguard.mobile.notification`)
+
+The notification listener is a thin Kotlin service that only reads the text Android exposes for each posting notification (title/text/subText/bigText/sumText where present), the package name and app label. Nothing is persisted; everything else is scored in pure TypeScript (`src/domain/notificationAnalyzer`) so it is unit-testable.
 
 ```
-mobile/android/app/src/main/java/com/threatguard/mobile/
-├── notification/
-│   ├── NotificationMonitorService   NotificationListenerService
-│   └── NotificationAnalyzer         scam/phishing heuristics (pure, tested)
-├── packages/
-│   └── ApkInspector                 PackageManager metadata, permissions, signing
-├── background/
-│   ├── BackgroundProtectionWorker   WorkManager job
-│   ├── BootReceiver                 re-schedule after reboot
-│   └── ScanForegroundService        user-initiated long scans
-└── alerts/
-    └── AlertNotifier                NotificationManager, dedupe, channels
+mobile/android/app/src/main/java/com/threatguard/mobile/notification/
+├── NotificationPrefs.kt           SharedPreferences: monitoring enabled, ignored packages, seen sources
+├── NotificationBridge.kt         Static weak ReactContext for event emission
+├── NotificationMonitorService.kt NotificationListenerService (reads exposed text, filters by prefs, emits capped payloads)
+├── NotificationMonitorModule.kt  RN bridge: access, connected, open settings, mirror prefs, getSeenSources, hasNotificationPermission, postThreatAlert
+└── NotificationMonitorPackage.kt Package registration
 ```
+
+Registration: `NotificationMonitorPackage()` added to `MainApplication.kt`. Manifest declares the service with `android:exported="false"`, `android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"` and the required intent-filter. Manifest also declares `POST_NOTIFICATIONS` (Android 13+).
+
+### Planned (later phases)
 
 ## Backend module map
 

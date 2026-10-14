@@ -3,10 +3,10 @@
  *
  * Mobile ThreatGuard is assembled in phases. Each native capability — the
  * device scanning engine, file access, installed-app inspection and the
- * notification listener — is wired up in a later phase. Screens read these
- * flags so they never offer an action that cannot yet produce a real result:
- * a control that is not backed by an implementation is shown as unavailable,
- * never as a working button that silently does nothing.
+ * notification listener — is wired up in a phase. Screens read these flags so
+ * they never offer an action that cannot yet produce a real result: a control
+ * that is not backed by an implementation is shown as unavailable, never as a
+ * working button that silently does nothing.
  *
  * When a capability lands, flip its flag here and the corresponding screen
  * enables its real path.
@@ -34,6 +34,6 @@ export const capabilities: Capabilities = {
   deviceScan: false,     // Full-device enumeration not implemented yet
   fileScan: true,        // On-device FileScanner engine (SAF + SHA-256 + signatures)
   appScan: false,        // Not yet implemented
-  notificationListener: false, // Not yet implemented
+  notificationListener: true, // Android NotificationListenerService + on-device scam analyser
   urlReputation: true,   // Backend reputation API is available
 };
