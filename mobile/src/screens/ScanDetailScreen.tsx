@@ -17,7 +17,7 @@ import {
 import { CircleCheck, ScanLine, ShieldAlert, Trash2, TriangleAlert } from 'lucide-react-native';
 import { useRootNavigation } from '../navigation/hooks';
 import { useScanStore } from '../store';
-import { scanTypeLabel, severityLabel, severityTone } from '../domain/threat';
+import { scanTypeLabel, statusLabel, statusTone } from '../domain/threat';
 import { formatDateTime, formatDuration } from '../utils/format';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -44,7 +44,7 @@ export function ScanDetailScreen(): React.JSX.Element {
     );
   }
 
-  const tone = severityTone(scan.threatLevel);
+  const tone = statusTone(scan.threatLevel);
   const clean = scan.threatsFound === 0;
 
   return (
@@ -64,7 +64,7 @@ export function ScanDetailScreen(): React.JSX.Element {
             </View>
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
               <Badge label={scanTypeLabel(scan.scanType)} tone="info" />
-              <Badge label={severityLabel(scan.threatLevel)} tone={tone} />
+              <Badge label={statusLabel(scan.threatLevel)} tone={tone} />
               <Badge label={scan.scanStatus} tone={scan.scanStatus === 'completed' ? 'safe' : 'unknown'} />
             </View>
           </View>

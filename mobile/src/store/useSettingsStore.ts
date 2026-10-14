@@ -1,32 +1,39 @@
 import { create } from 'zustand';
+import { settingsRepository, initSettings } from '../db/settingsRepository';
 import type { PrivacyPreferences, SecuritySettings } from '../domain/types';
 import type { ColorScheme } from '../theme/tokens';
 
 /**
- * User security preferences and appearance.
- *
- * Defaults are privacy-first: notification monitoring and background protection
- * stay OFF until the user explicitly grants permission, and hash lookups are
- * opt-in. Phase 2 persists these; the defaults are applied until then.
+ * User security preferences and appearance, persisted to SQLite.
  */
+type StoredColorScheme = ColorScheme | 'system' | undefined;
+
+/**
+ * User security preferences and appearance, persisted to SQLite.
+ */
+
 export interface SettingsState extends SecuritySettings {
   /** `undefined` follows the device colour scheme. */
-  colorScheme?: ColorScheme;
-  /** Whether the first-run introduction has been completed. In-memory until Phase 2 persists it. */
+  colorScheme?: StoredColorScheme;
+  /** Whether the first-run introduction has been completed. */
   onboardingComplete: boolean;
-  setNotificationMonitoring: (value: boolean) => void;
-  setBackgroundProtection: (value: boolean) => void;
-  setAlertNotifications: (value: boolean) => void;
-  setPrivacyPreference: <K extends keyof PrivacyPreferences>(key: K, value: PrivacyPreferences[K]) => void;
-  setColorScheme: (scheme: ColorScheme | undefined) => void;
-  completeOnboarding: () => void;
-  reset: () => void;
+  loading: boolean;
+  error: string | null;
+
+  setNotificationMonitoring: (value: boolean) => Promise<void>;
+  setBackgroundProtection: (value: boolean) => Promise<void>;
+  setAlertNotifications: (value: boolean) => Promise<void>;
+  setPrivacyPreference: <K extends keyof PrivacyPreferences>(key: K, value: PrivacyPreferences[K]) => Promise<void>;
+  setColorScheme: (scheme: StoredColorScheme) => Promise<void>;
+  completeOnboarding: () => Promise<void>;
+  reset: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const DEFAULT_PRIVACY: PrivacyPreferences = {
-  analyzeNotificationsLocally: true,
-  storeNotificationBodies: false,
-  allowHashLookups: false,
+  analytics: false,
+  crashReporting: false,
+  shareThreatData: false,
 };
 
 const DEFAULTS: SecuritySettings = {
@@ -36,18 +43,112 @@ const DEFAULTS: SecuritySettings = {
   privacyPreferences: DEFAULT_PRIVACY,
 };
 
-export const useSettingsStore = create<SettingsState>((set) => ({
+export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...DEFAULTS,
   colorScheme: undefined,
   onboardingComplete: false,
-  setNotificationMonitoring: (value) => set({ notificationMonitoring: value }),
-  setBackgroundProtection: (value) => set({ backgroundProtection: value }),
-  setAlertNotifications: (value) => set({ alertNotifications: value }),
-  setPrivacyPreference: (key, value) =>
-    set((state) => ({
-      privacyPreferences: { ...state.privacyPreferences, [key]: value },
-    })),
-  setColorScheme: (scheme) => set({ colorScheme: scheme }),
-  completeOnboarding: () => set({ onboardingComplete: true }),
-  reset: () => set({ ...DEFAULTS, colorScheme: undefined, onboardingComplete: false }),
+  loading: false,
+  error: null,
+
+  setNotificationMonitoring: async (value) => {
+    try {
+      await settingsRepository.set('notificationMonitoring', value);
+      set({ notificationMonitoring: value });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to save setting' });
+      throw err;
+    }
+  },
+
+  setBackgroundProtection: async (value) => {
+    try {
+      await settingsRepository.set('backgroundProtection', value);
+      set({ backgroundProtection: value });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to save setting' });
+      throw err;
+    }
+  },
+
+  setAlertNotifications: async (value) => {
+    try {
+      await settingsRepository.set('alertNotifications', value);
+      set({ alertNotifications: value });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to save setting' });
+      throw err;
+    }
+  },
+
+  setPrivacyPreference: async <K extends keyof PrivacyPreferences>(key: K, value: PrivacyPreferences[K]) => {
+    try {
+      const current = get().privacyPreferences;
+      const updated = { ...current, [key]: value };
+      await settingsRepository.set('privacyPreferences', updated);
+      set({ privacyPreferences: updated });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to save setting' });
+      throw err;
+    }
+  },
+
+  setColorScheme: async (scheme) => {
+    try {
+      await settingsRepository.set('colorScheme', scheme);
+      set({ colorScheme: scheme });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to save setting' });
+      throw err;
+    }
+  },
+
+  completeOnboarding: async () => {
+    try {
+      await settingsRepository.set('onboardingComplete', true);
+      set({ onboardingComplete: true });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to save setting' });
+      throw err;
+    }
+  },
+
+  reset: async () => {
+    try {
+      await settingsRepository.reset();
+      set({
+        ...DEFAULTS,
+        colorScheme: undefined,
+        onboardingComplete: false,
+      });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to reset settings' });
+      throw err;
+    }
+  },
+
+  refresh: async () => {
+    set({ loading: true, error: null });
+    try {
+      const all = await settingsRepository.getAll();
+      set({
+        notificationMonitoring: all.notificationMonitoring ?? DEFAULTS.notificationMonitoring,
+        backgroundProtection: all.backgroundProtection ?? DEFAULTS.backgroundProtection,
+        alertNotifications: all.alertNotifications ?? DEFAULTS.alertNotifications,
+        privacyPreferences: all.privacyPreferences ?? DEFAULTS.privacyPreferences,
+        colorScheme: all.colorScheme,
+        onboardingComplete: all.onboardingComplete ?? false,
+        loading: false,
+      });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to load settings', loading: false });
+    }
+  },
 }));
+
+/**
+ * Initialize the database and load settings on app startup.
+ * Call this once from the app root.
+ */
+export async function initializeSettings(): Promise<void> {
+  await initSettings();
+}

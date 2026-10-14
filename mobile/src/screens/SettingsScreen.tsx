@@ -87,27 +87,26 @@ export function SettingsScreen(): React.JSX.Element {
           <SectionHeader title="Privacy" subtitle="What leaves this device" />
           <Card flush>
             <SettingRow
-              title="Analyse messages on-device"
-              description="Scam checks run locally. Turning this off disables message analysis."
-              value={settings.privacyPreferences.analyzeNotificationsLocally ?? true}
-              onValueChange={(v) => settings.setPrivacyPreference('analyzeNotificationsLocally', v)}
+              title="Usage analytics"
+              description="Collect anonymous usage data to improve ThreatGuard."
+              value={settings.privacyPreferences.analytics ?? false}
+              onValueChange={(v) => settings.setPrivacyPreference('analytics', v)}
               icon={<Lock size={20} color={theme.colors.textSecondary} />}
             />
             <Divider />
             <SettingRow
-              title="Allow file fingerprint lookups"
-              description="Send only a file's SHA-256 to the reputation service. The file itself is never uploaded."
-              value={settings.privacyPreferences.allowHashLookups ?? false}
-              onValueChange={(v) => settings.setPrivacyPreference('allowHashLookups', v)}
-              icon={<KeyRound size={20} color={theme.colors.textSecondary} />}
+              title="Crash reports"
+              description="Send crash reports to help fix bugs."
+              value={settings.privacyPreferences.crashReporting ?? false}
+              onValueChange={(v) => settings.setPrivacyPreference('crashReporting', v)}
+              icon={<Lock size={20} color={theme.colors.textSecondary} />}
             />
             <Divider />
             <SettingRow
-              title="Store message contents"
-              description="Always off. ThreatGuard never stores the text of your messages."
-              value={false}
-              onValueChange={() => undefined}
-              disabled
+              title="Share threat data"
+              description="Share anonymized threat data to improve detection for everyone."
+              value={settings.privacyPreferences.shareThreatData ?? false}
+              onValueChange={(v) => settings.setPrivacyPreference('shareThreatData', v)}
               icon={<Lock size={20} color={theme.colors.textSecondary} />}
             />
           </Card>

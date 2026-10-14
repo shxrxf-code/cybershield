@@ -75,7 +75,9 @@ export interface ThreatAlert {
   target?: string;
   recommendedAction?: string;
   isRead: boolean;
+  scannedAt: string;
   createdAt: string;
+  readAt?: string;
 }
 
 export interface ScanRecord {
@@ -84,13 +86,18 @@ export interface ScanRecord {
   target?: string;
   fileName?: string;
   fileHash?: string;
+  fileSize?: number;
   scanStatus: ScanStatus;
-  threatLevel: Severity;
+  threatLevel: VerdictStatus;
+  threatType?: string;
+  detectionReason?: string;
   filesChecked: number;
   threatsFound: number;
-  durationMs?: number;
-  source?: string;
+  durationMs: number;
+  source: string;
   scannedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DashboardTotals {
@@ -108,12 +115,12 @@ export interface DashboardSummary {
 }
 
 export interface PrivacyPreferences {
-  /** Analyse notification text on-device only. */
-  analyzeNotificationsLocally?: boolean;
-  /** Never store notification bodies (always true in this app). */
-  storeNotificationBodies?: boolean;
-  /** Allow hash lookups against a backend for file scans. */
-  allowHashLookups?: boolean;
+  /** Collect anonymous usage analytics. */
+  analytics: boolean;
+  /** Send crash reports. */
+  crashReporting: boolean;
+  /** Share anonymized threat data to improve detection. */
+  shareThreatData: boolean;
 }
 
 export interface SecuritySettings {

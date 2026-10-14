@@ -13,7 +13,7 @@ import {
 } from 'lucide-react-native';
 import { useRootNavigation } from '../navigation/hooks';
 import { useScanStore } from '../store';
-import { severityLabel, severityTone, toneDotRole } from '../domain/threat';
+import { statusLabel, statusTone, toneDotRole } from '../domain/threat';
 import { truncateMiddle } from '../utils/format';
 import { capabilities } from '../capabilities';
 import { scanFileHash } from '../api';
@@ -249,7 +249,7 @@ export function FileScannerScreen(): React.JSX.Element {
                   ) : null}
                   <ListRow
                     title={scan.fileName ?? 'File'}
-                    subtitle={`${severityLabel(scan.threatLevel)} · ${scan.filesChecked} checked`}
+                    subtitle={`${statusLabel(scan.threatLevel)} · ${scan.filesChecked} checked`}
                     meta={scan.fileHash ? truncateMiddle(scan.fileHash) : undefined}
                     leading={
                       <View
@@ -257,7 +257,7 @@ export function FileScannerScreen(): React.JSX.Element {
                           width: 10,
                           height: 10,
                           borderRadius: 5,
-                          backgroundColor: theme.colors[toneDotRole(severityTone(scan.threatLevel))],
+                          backgroundColor: theme.colors[toneDotRole(statusTone(scan.threatLevel))],
                         }}
                       />
                     }

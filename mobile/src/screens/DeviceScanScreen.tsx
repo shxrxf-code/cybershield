@@ -16,7 +16,7 @@ import {
 } from 'lucide-react-native';
 import { useRootNavigation } from '../navigation/hooks';
 import { useScanStore } from '../store';
-import { severityLabel, severityTone } from '../domain/threat';
+import { statusLabel, statusTone } from '../domain/threat';
 import { formatRelativeTime, formatDuration } from '../utils/format';
 import { capabilities } from '../capabilities';
 import type { RootStackParamList } from '../navigation/types';
@@ -98,7 +98,7 @@ export function DeviceScanScreen(): React.JSX.Element {
           <View>
             <SectionHeader title="Last result" subtitle={formatRelativeTime(previous.scannedAt)} />
             <Card
-              tone={previous.threatsFound > 0 ? severityTone(previous.threatLevel) : 'safe'}
+              tone={previous.threatsFound > 0 ? statusTone(previous.threatLevel) : 'safe'}
               onPress={() => navigation.navigate('ScanDetail', { scanId: previous.id })}
             >
               <View style={{ gap: theme.spacing.xs }}>
@@ -109,7 +109,7 @@ export function DeviceScanScreen(): React.JSX.Element {
                 </AppText>
                 <AppText variant="caption" color="secondary">
                   {previous.filesChecked} checked · {formatDuration(previous.durationMs)} ·{' '}
-                  {severityLabel(previous.threatLevel)}
+                  {statusLabel(previous.threatLevel)}
                 </AppText>
               </View>
             </Card>

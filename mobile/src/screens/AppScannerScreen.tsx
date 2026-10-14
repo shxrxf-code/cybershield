@@ -15,7 +15,7 @@ import {
 import { AppWindow, Info as InfoIcon, Lock, Package, ShieldAlert, ShieldCheck } from 'lucide-react-native';
 import { useRootNavigation } from '../navigation/hooks';
 import { useScanStore } from '../store';
-import { severityLabel, severityTone, toneDotRole } from '../domain/threat';
+import { statusLabel, statusTone, toneDotRole } from '../domain/threat';
 import { formatRelativeTime } from '../utils/format';
 import { capabilities } from '../capabilities';
 
@@ -128,18 +128,18 @@ export function AppScannerScreen(): React.JSX.Element {
                   ) : null}
                   <ListRow
                     title={scan.target ?? scan.fileName ?? 'Package'}
-                    subtitle={`${severityLabel(scan.threatLevel)} · ${formatRelativeTime(scan.scannedAt)}`}
+                    subtitle={`${statusLabel(scan.threatLevel)} · ${formatRelativeTime(scan.scannedAt)}`}
                     leading={
                       <View
                         style={{
                           width: 10,
                           height: 10,
                           borderRadius: 5,
-                          backgroundColor: theme.colors[toneDotRole(severityTone(scan.threatLevel))],
+                          backgroundColor: theme.colors[toneDotRole(statusTone(scan.threatLevel))],
                         }}
                       />
                     }
-                    trailing={<Badge label={severityLabel(scan.threatLevel)} tone={severityTone(scan.threatLevel)} size="sm" />}
+                    trailing={<Badge label={statusLabel(scan.threatLevel)} tone={statusTone(scan.threatLevel)} size="sm" />}
                     onPress={() => navigation.navigate('ScanDetail', { scanId: scan.id })}
                   />
                 </View>

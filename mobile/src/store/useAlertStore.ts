@@ -1,37 +1,104 @@
 import { create } from 'zustand';
+import { alertRepository } from '../db/alertRepository';
 import type { ThreatAlert } from '../domain/types';
 
 /**
- * In-memory alerts store. Phase 2 will persist alerts and Phase 7 will push new
- * ones from the notification listener; the surface here stays the same.
+ * Alerts backed by the local SQLite database.
  */
+
 export interface AlertState {
   alerts: ThreatAlert[];
-  addAlert: (alert: ThreatAlert) => void;
-  markRead: (id: string) => void;
-  markUnread: (id: string) => void;
-  markAllRead: () => void;
-  removeAlert: (id: string) => void;
-  clear: () => void;
-  unreadCount: () => number;
+  loading: boolean;
+  error: string | null;
+
+  addAlert: (alert: ThreatAlert) => Promise<void>;
+  markRead: (id: string) => Promise<void>;
+  markUnread: (id: string) => Promise<void>;
+  markAllRead: () => Promise<void>;
+  removeAlert: (id: string) => Promise<void>;
+  clear: () => Promise<void>;
+
   getById: (id: string) => ThreatAlert | undefined;
+  unreadCount: () => number;
+  refresh: () => Promise<void>;
 }
 
 export const useAlertStore = create<AlertState>((set, get) => ({
   alerts: [],
-  addAlert: (alert) =>
-    set((state) => ({ alerts: [alert, ...state.alerts.filter((a) => a.id !== alert.id)] })),
-  markRead: (id) =>
-    set((state) => ({
-      alerts: state.alerts.map((a) => (a.id === id ? { ...a, isRead: true } : a)),
-    })),
-  markUnread: (id) =>
-    set((state) => ({
-      alerts: state.alerts.map((a) => (a.id === id ? { ...a, isRead: false } : a)),
-    })),
-  markAllRead: () => set((state) => ({ alerts: state.alerts.map((a) => ({ ...a, isRead: true })) })),
-  removeAlert: (id) => set((state) => ({ alerts: state.alerts.filter((a) => a.id !== id) })),
-  clear: () => set({ alerts: [] }),
-  unreadCount: () => get().alerts.filter((a) => !a.isRead).length,
+  loading: false,
+  error: null,
+
+  addAlert: async (alert) => {
+    try {
+      const created = await alertRepository.create(alert);
+      set((state) => ({ alerts: [created, ...state.alerts.filter((a) => a.id !== created.id)] }));
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to add alert' });
+      throw err;
+    }
+  },
+
+  markRead: async (id) => {
+    try {
+      await alertRepository.markRead(id);
+      set((state) => ({ alerts: state.alerts.map((a) => (a.id === id ? { ...a, isRead: true } : a)) }));
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to mark alert read' });
+      throw err;
+    }
+  },
+
+  markUnread: async (id) => {
+    try {
+      await alertRepository.markUnread(id);
+      set((state) => ({ alerts: state.alerts.map((a) => (a.id === id ? { ...a, isRead: false } : a)) }));
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to mark alert unread' });
+      throw err;
+    }
+  },
+
+  markAllRead: async () => {
+    try {
+      await alertRepository.markAllRead();
+      set((state) => ({ alerts: state.alerts.map((a) => ({ ...a, isRead: true })) }));
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to mark all alerts read' });
+      throw err;
+    }
+  },
+
+  removeAlert: async (id) => {
+    try {
+      await alertRepository.delete(id);
+      set((state) => ({ alerts: state.alerts.filter((a) => a.id !== id) }));
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to remove alert' });
+      throw err;
+    }
+  },
+
+  clear: async () => {
+    try {
+      await alertRepository.deleteAll();
+      set({ alerts: [] });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to clear alerts' });
+      throw err;
+    }
+  },
+
   getById: (id) => get().alerts.find((a) => a.id === id),
+
+  unreadCount: () => get().alerts.filter((a) => !a.isRead).length,
+
+  refresh: async () => {
+    set({ loading: true, error: null });
+    try {
+      const alerts = await alertRepository.findRecent(200);
+      set({ alerts, loading: false });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to load alerts', loading: false });
+    }
+  },
 }));

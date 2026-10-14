@@ -13,7 +13,7 @@ import {
 import { ShieldAlert, ShieldCheck, ScanLine, Bell, TriangleAlert, ChevronRight } from 'lucide-react-native';
 import { useRootNavigation } from '../navigation/hooks';
 import { useAlertStore, useScanStore, useSettingsStore, selectScanTotals } from '../store';
-import { severityTone, threatTypeLabel } from '../domain/threat';
+import { statusTone, threatTypeLabel } from '../domain/threat';
 import { formatRelativeTime } from '../utils/format';
 
 /**
@@ -108,7 +108,7 @@ export function DashboardScreen(): React.JSX.Element {
           />
           {lastScan ? (
             <Card
-              tone={lastScan.threatsFound > 0 ? severityTone(lastScan.threatLevel) : 'safe'}
+              tone={lastScan.threatsFound > 0 ? statusTone(lastScan.threatLevel) : 'safe'}
               onPress={() => navigation.navigate('ScanDetail', { scanId: lastScan.id })}
             >
               <View style={{ gap: theme.spacing.xs }}>
@@ -212,6 +212,6 @@ export function DashboardScreen(): React.JSX.Element {
 }
 
 function severityToDot(severity: string): 'safe' | 'suspicious' | 'malicious' | 'unknown' {
-  const tone = severityTone(severity as never);
+  const tone = statusTone(severity as any);
   return tone === 'info' ? 'unknown' : (tone as 'safe' | 'suspicious' | 'malicious' | 'unknown');
 }

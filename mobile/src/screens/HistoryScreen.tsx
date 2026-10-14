@@ -6,7 +6,7 @@ import { AppText, Button, Chip, EmptyState, ListRow } from '../components/ui';
 import { History as HistoryIcon, Search } from 'lucide-react-native';
 import { useRootNavigation } from '../navigation/hooks';
 import { useScanStore } from '../store';
-import { scanTypeLabel, severityLabel, severityTone } from '../domain/threat';
+import { scanTypeLabel, statusLabel, statusTone } from '../domain/threat';
 import { formatRelativeTime, formatDuration } from '../utils/format';
 import { toneColors } from '../theme';
 import type { ScanType } from '../domain/types';
@@ -113,13 +113,13 @@ export function HistoryScreen(): React.JSX.Element {
                     height: 10,
                     borderRadius: 5,
                     marginTop: 6,
-                    backgroundColor: toneColors(theme, severityTone(item.threatLevel)).fg,
+                    backgroundColor: toneColors(theme, statusTone(item.threatLevel)).fg,
                   }}
                 />
               }
               trailing={
                 <AppText variant="caption" color="tertiary">
-                  {severityLabel(item.threatLevel)}
+                  {statusLabel(item.threatLevel)}
                 </AppText>
               }
               onPress={() => navigation.navigate('ScanDetail', { scanId: item.id })}

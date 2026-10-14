@@ -66,3 +66,9 @@ export function truncateMiddle(value: string, head = 8, tail = 6): string {
 export function formatCount(value: number): string {
   return value.toLocaleString();
 }
+
+/** Generate a short, URL-safe unique ID. */
+export function generateId(): string {
+  return Math.random().toString(36).substring(2, 15) +
+         Math.random().toString(36).substring(2, 15);
+}

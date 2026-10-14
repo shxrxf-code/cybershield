@@ -11,10 +11,15 @@
  *    packages (notably lucide-react-native) resolve their ESM entry point in
  *    the React Native Jest environment. The preset's asset transformer is kept
  *    so images and SVGs still resolve to stubs.
+ * 3. `moduleNameMapper` maps the `src/` alias to the actual source directory.
  */
 module.exports = {
   preset: '@react-native/jest-preset',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  moduleNameMapper: {
+    '^src/(.*)$': '<rootDir>/src/$1',
+    '^@/(.*)$': '<rootDir>/src/$1',
+  },
   transform: {
     '^.+\\.(js|jsx|ts|tsx|mjs|cjs)$': 'babel-jest',
     '^.+\\.(bmp|gif|jpg|jpeg|mp4|png|psd|svg|webp)$': require.resolve(
