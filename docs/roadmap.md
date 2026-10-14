@@ -10,7 +10,7 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 |-------|-------|--------|
 | 0 | Toolchain + monorepo scaffolding | ✅ |
 | 1 | Design system, theme, navigation, 16 screens | ✅ |
-| 2 | Local SQLite data layer + repositories + stores | ⬜ |
+| 2 | Local SQLite data layer + repositories + stores | ✅ |
 | 3 | Backend API (Express + TS + DB + providers + tests) | ✅ |
 | 4 | URL scanner end-to-end | 🟡 |
 | 5 | File scanner (PDF / image / APK) + native access | 🟡 |
@@ -41,6 +41,16 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 > disabled and state plainly that the capability is not in this build. Nothing
 > is simulated and no verdict, score or row is invented. The single switchboard
 > for this is `mobile/src/capabilities.ts`.
+
+### Phase 2 — Local data layer
+- [x] SQLite schema (scans, alerts, settings) with migration framework
+- [x] op-sqlite service wrapper with migrations, transactions, reactive queries
+- [x] Scan repository (CRUD, API sync, recent/by-type/by-hash queries)
+- [x] Alert repository (CRUD, read/unread, unread count, recent)
+- [x] Settings repository (key-value with JSON, privacy prefs, onboarding flag)
+- [x] Stores migrated to repositories (async, persisted, refresh on boot)
+- [x] App initializes DB on startup, loads settings, handles 'system' theme
+- [x] Verified: `tsc --noEmit` clean, `eslint` 0 errors, Jest 53/53 pass
 
 ### Phase 4 — URL scanner end-to-end
 - [x] Local URL syntax parser (`src/utils/url.ts`) with 13 unit tests
