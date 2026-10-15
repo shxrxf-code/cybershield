@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { StyleSheet, TextInput, View } from 'react-native';
 import { useTheme } from '../theme';
 import { AlertBanner, AppText, Badge, Button, Card, KeyValue, Screen, SectionHeader } from '../components/ui';
 import { CircleAlert, Info as InfoIcon, Link2, Search, ShieldCheck, TriangleAlert } from 'lucide-react-native';
@@ -25,6 +25,32 @@ interface ReputationResult extends UrlScanResponse {
  */
 export function UrlScannerScreen(): React.JSX.Element {
   const theme = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: { gap: theme.spacing.xl },
+        searchContainer: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+          backgroundColor: theme.colors.sunken,
+          borderRadius: theme.radius.md,
+          borderWidth: 1,
+          paddingHorizontal: theme.spacing.md,
+          height: 48,
+        },
+        searchInput: { flex: 1, color: theme.colors.textPrimary, paddingVertical: 0 },
+        errorRow: { flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.sm },
+        flex1: { flex: 1 },
+        actionRow: { flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.lg },
+        section: { padding: theme.spacing.lg, gap: theme.spacing.md },
+        row: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+        divider: { height: 1, backgroundColor: theme.colors.border },
+        details: { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm },
+        safetySection: { gap: theme.spacing.sm },
+      }),
+    [theme],
+  );
   const navigation = useRootNavigation();
 
   const [value, setValue] = useState('');
@@ -70,24 +96,17 @@ export function UrlScannerScreen(): React.JSX.Element {
 
   return (
     <Screen scroll edges={['left', 'right']}>
-      <View style={{ gap: theme.spacing.xl }}>
+      <View style={styles.root}>
         <View>
           <SectionHeader
             title="Check a link"
             subtitle="Paste an address to review it before you open it"
           />
           <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: theme.spacing.sm,
-              backgroundColor: theme.colors.sunken,
-              borderRadius: theme.radius.md,
-              borderWidth: 1,
-              borderColor: error ? theme.colors.malicious : theme.colors.border,
-              paddingHorizontal: theme.spacing.md,
-              height: 48,
-            }}
+            style={[
+              styles.searchContainer,
+              { borderColor: error ? theme.colors.malicious : theme.colors.border },
+            ]}
           >
             <Link2 size={18} color={theme.colors.textTertiary} />
             <TextInput
@@ -98,7 +117,7 @@ export function UrlScannerScreen(): React.JSX.Element {
               }}
               placeholder="example.com/login"
               placeholderTextColor={theme.colors.textTertiary}
-              style={{ flex: 1, color: theme.colors.textPrimary, paddingVertical: 0 }}
+              style={styles.searchInput}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
@@ -109,14 +128,14 @@ export function UrlScannerScreen(): React.JSX.Element {
             />
           </View>
           {error ? (
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
+            <View style={styles.errorRow}>
               <CircleAlert size={16} color={theme.colors.malicious} />
-              <AppText variant="caption" color="malicious" style={{ flex: 1 }}>
+              <AppText variant="caption" color="malicious" style={styles.flex1}>
                 {error}
               </AppText>
             </View>
           ) : null}
-          <View style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.lg }}>
+          <View style={styles.actionRow}>
             <Button
               label="Check link"
               icon={<Search size={18} color={theme.colors.onAccent} />}
@@ -133,8 +152,8 @@ export function UrlScannerScreen(): React.JSX.Element {
           <View>
             <SectionHeader title="Local analysis" subtitle="Runs on this device, no network" />
             <Card flush>
-              <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+              <View style={styles.section}>
+                <View style={styles.row}>
                   <ShieldCheck size={20} color={theme.colors.unknown} />
                   <AppText variant="bodyStrong">Address is well-formed</AppText>
                   <Badge label="Unverified" tone="unknown" size="sm" />
@@ -144,8 +163,8 @@ export function UrlScannerScreen(): React.JSX.Element {
                   reputation check can do that.
                 </AppText>
               </View>
-              <View style={{ height: 1, backgroundColor: theme.colors.border }} />
-              <View style={{ paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }}>
+              <View style={styles.divider} />
+              <View style={styles.details}>
                 <KeyValue label="Host" value={result.parsed.host} mono selectable />
                 <KeyValue label="Scheme" value={result.parsed.scheme} />
                 {result.parsed.port ? (
@@ -163,8 +182,8 @@ export function UrlScannerScreen(): React.JSX.Element {
               <View>
                 <SectionHeader title="Reputation verdict" subtitle="From the ThreatGuard backend" />
                 <Card flush tone={severityToneFromLevel(reputation.threatLevel)}>
-                  <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+                  <View style={styles.section}>
+                    <View style={styles.row}>
                       {iconForLevel(reputation.threatLevel, theme)}
                       <AppText variant="bodyStrong">
                         {reputation.threatLevel === 'SAFE'
@@ -182,8 +201,8 @@ export function UrlScannerScreen(): React.JSX.Element {
                     {reputation.detectionReason ? (
                       <AppText variant="body" color="secondary">{reputation.detectionReason}</AppText>
                     ) : null}
-                    <View style={{ height: 1, backgroundColor: theme.colors.border }} />
-                    <View style={{ paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }}>
+                    <View style={styles.divider} />
+                    <View style={styles.details}>
                       <KeyValue label="Threat type" value={reputation.threatType ?? '—'} />
                       <KeyValue label="Scanned" value={new Date(reputation.scannedAt).toLocaleString()} />
                     </View>
@@ -218,7 +237,7 @@ export function UrlScannerScreen(): React.JSX.Element {
         ) : null}
 
         <Card>
-          <View style={{ gap: theme.spacing.sm }}>
+          <View style={styles.safetySection}>
             <AppText variant="subheading">Staying safe with links</AppText>
             <AppText variant="body" color="secondary">
               Check the host carefully before you tap. A well-known name can be hidden inside a

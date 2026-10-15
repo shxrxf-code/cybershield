@@ -1,5 +1,5 @@
-import React from 'react';
-import { View } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme';
 import { AppText, Card, Divider, KeyValue, Screen, SectionHeader } from '../components/ui';
 import { Info, Lock, Package, ShieldCheck } from 'lucide-react-native';
@@ -12,10 +12,50 @@ import { APP_BUILD, APP_NAME, APP_PACKAGE, APP_VERSION, OPEN_SOURCE, PRIVACY_COM
 export function AboutScreen(): React.JSX.Element {
   const theme = useTheme();
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: { gap: theme.spacing.xl },
+        header: { alignItems: 'center', gap: theme.spacing.sm },
+        meta: { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm },
+        commitmentFirst: {
+          flexDirection: 'row',
+          gap: theme.spacing.md,
+          padding: theme.spacing.lg,
+          borderTopWidth: 0,
+          borderTopColor: theme.colors.border,
+        },
+        commitment: {
+          flexDirection: 'row',
+          gap: theme.spacing.md,
+          padding: theme.spacing.lg,
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.border,
+        },
+        flex1: { flex: 1 },
+        openSourceRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.md,
+          paddingVertical: theme.spacing.md,
+          paddingHorizontal: theme.spacing.lg,
+        },
+        stackMd: { gap: theme.spacing.md },
+        knownTitleRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+        footer: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: theme.spacing.xs,
+        },
+      }),
+    [theme],
+  );
+
   return (
     <Screen scroll edges={['left', 'right']}>
-      <View style={{ gap: theme.spacing.xl }}>
-        <View style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+      <View style={styles.content}>
+        <View style={styles.header}>
           <ShieldCheck size={56} color={theme.colors.accent} />
           <AppText variant="title" align="center">
             {APP_NAME}
@@ -26,7 +66,7 @@ export function AboutScreen(): React.JSX.Element {
         </View>
 
         <Card flush>
-          <View style={{ paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }}>
+          <View style={styles.meta}>
             <KeyValue label="Version" value={APP_VERSION} />
             <KeyValue label="Build" value={APP_BUILD} />
             <KeyValue label="Package" value={APP_PACKAGE} mono />
@@ -49,18 +89,9 @@ export function AboutScreen(): React.JSX.Element {
           <SectionHeader title="Privacy commitments" />
           <Card flush>
             {PRIVACY_COMMITMENTS.map((commitment, index) => (
-              <View
-                key={commitment}
-                style={{
-                  flexDirection: 'row',
-                  gap: theme.spacing.md,
-                  padding: theme.spacing.lg,
-                  borderTopWidth: index === 0 ? 0 : 1,
-                  borderTopColor: theme.colors.border,
-                }}
-              >
+              <View key={commitment} style={index === 0 ? styles.commitmentFirst : styles.commitment}>
                 <Lock size={18} color={theme.colors.textSecondary} />
-                <AppText variant="body" color="secondary" style={{ flex: 1 }}>
+                <AppText variant="body" color="secondary" style={styles.flex1}>
                   {commitment}
                 </AppText>
               </View>
@@ -74,17 +105,9 @@ export function AboutScreen(): React.JSX.Element {
             {OPEN_SOURCE.map((item, index) => (
               <View key={item.name}>
                 {index > 0 ? <Divider /> : null}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: theme.spacing.md,
-                    paddingVertical: theme.spacing.md,
-                    paddingHorizontal: theme.spacing.lg,
-                  }}
-                >
+                <View style={styles.openSourceRow}>
                   <Package size={18} color={theme.colors.textTertiary} />
-                  <AppText variant="body" style={{ flex: 1 }}>
+                  <AppText variant="body" style={styles.flex1}>
                     {item.name}
                   </AppText>
                   <AppText variant="caption" color="tertiary">
@@ -97,8 +120,8 @@ export function AboutScreen(): React.JSX.Element {
         </View>
 
         <Card>
-          <View style={{ gap: theme.spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <View style={styles.stackMd}>
+            <View style={styles.knownTitleRow}>
               <Info size={18} color={theme.colors.textSecondary} />
               <AppText variant="subheading">Known limitations</AppText>
             </View>
@@ -111,14 +134,7 @@ export function AboutScreen(): React.JSX.Element {
           </View>
         </Card>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: theme.spacing.xs,
-          }}
-        >
+        <View style={styles.footer}>
           <ShieldCheck size={16} color={theme.colors.textTertiary} />
           <AppText variant="caption" color="tertiary">
             A final-year cybersecurity project

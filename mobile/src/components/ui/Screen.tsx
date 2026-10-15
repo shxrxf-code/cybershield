@@ -1,5 +1,5 @@
-import React from 'react';
-import { ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme';
 
@@ -33,18 +33,24 @@ export function Screen({
   refreshControl,
 }: ScreenProps): React.JSX.Element {
   const theme = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safe: { flex: 1, backgroundColor: theme.colors.background },
+        scrollContent: { paddingBottom: theme.spacing.huge },
+        content: { flex: 1 },
+      }),
+    [theme],
+  );
   const padding = padded
     ? { paddingHorizontal: theme.layout.screenPadding, paddingVertical: theme.spacing.lg }
     : undefined;
 
   return (
-    <SafeAreaView
-      edges={edges}
-      style={[{ flex: 1, backgroundColor: theme.colors.background }, style]}
-    >
+    <SafeAreaView edges={edges} style={[styles.safe, style]}>
       {scroll ? (
         <ScrollView
-          contentContainerStyle={[padding, { paddingBottom: theme.spacing.huge }, contentContainerStyle]}
+          contentContainerStyle={[padding, styles.scrollContent, contentContainerStyle]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           refreshControl={refreshControl}
@@ -52,7 +58,7 @@ export function Screen({
           {children}
         </ScrollView>
       ) : (
-        <View style={[{ flex: 1 }, padding, contentContainerStyle]}>{children}</View>
+        <View style={[styles.content, padding, contentContainerStyle]}>{children}</View>
       )}
     </SafeAreaView>
   );

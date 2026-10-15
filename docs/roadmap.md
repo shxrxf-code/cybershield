@@ -13,7 +13,7 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 | 2 | Local SQLite data layer + repositories + stores | ✅ |
 | 3 | Backend API (Express + TS + DB + providers + tests) | ✅ |
 | 4 | URL scanner end-to-end | 🟡 |
-| 5 | File scanner (PDF / image / APK) + native access | 🟡 (engine built & verified in build; on-device run pending) |
+| 5 | File scanner (PDF / image / APK) + native access | ✅ (engine built & verified in build; on-device run pending) |
 | 6 | Kotlin notification monitoring + analyzer | 🟡 (listener + analyzer built & verified; on-device run pending) |
 | 7 | Real-time alert system | ⬜ |
 | 8 | Full device scan + WorkManager background protection | ⬜ |
@@ -58,7 +58,7 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 - [x] Screen integration (`UrlScannerScreen`) calls backend when capability enabled
 - [x] No fake verdicts — returns "Unverified" until reputation confirms
 
-### Phase 5 — File scanner (PDF / image / APK) + native access
+### Phase 5 — File scanner (PDF / image / APK) + native access + App inspection
 - [x] Native module scaffold: `FileScannerModule` + `FileScannerPackage`, registered in `MainApplication.kt`
 - [x] SAF picker (`ACTION_OPEN_DOCUMENT`) — needs **no** runtime storage permission
 - [x] Streaming SHA-256 (`HashScanner`) with progress reporting and cancellation
@@ -69,6 +69,8 @@ Legend: ✅ done & verified · 🟡 in progress · ⬜ not started · ⚠️ blo
 - [x] TypeScript bridge (`src/native/FileScannerNative.ts`), hooks and verdict-merge helpers
 - [x] Unit tests: verdict mapping / merge / bridge degradation (`npx jest` → 79 pass)
 - [x] APK packaging verified: all 7 scanner classes present in `app-debug.apk`
+- [x] **App Inspection module**: `AppInspectionModule` + `AppInspectionPackage` + `AppRiskAnalyzer` — PackageManager enumeration, permission analysis, risk assessment (Low/Medium/High), `<queries>` in manifest for Android 11+ visibility, no QUERY_ALL_PACKAGES
+- [x] AppScannerScreen with real-time results, filters, expandable detail views, risk summary cards
 - [ ] On-device acceptance run of the 16 scenarios in `docs/testing/device-test-plan.md`
 - [ ] PDF text extraction, image OCR, deeper APK analysis (later)
 

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { toneColors, useTheme } from '../../theme';
 import type { ThreatTone } from '../../theme/theme';
 import { AppText } from './Text';
@@ -26,11 +26,31 @@ export function ProgressBar({
   const theme = useTheme();
   const clamped = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
   const { fg } = toneColors(theme, tone);
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: { gap: theme.spacing.xs },
+        header: { flexDirection: 'row', justifyContent: 'space-between' },
+        track: {
+          height,
+          borderRadius: theme.radius.pill,
+          backgroundColor: theme.colors.sunken,
+          overflow: 'hidden',
+        },
+        fill: {
+          width: `${clamped * 100}%`,
+          height: '100%',
+          borderRadius: theme.radius.pill,
+          backgroundColor: fg,
+        },
+      }),
+    [theme, height, clamped, fg],
+  );
 
   return (
-    <View style={[{ gap: theme.spacing.xs }, style]}>
+    <View style={[styles.root, style]}>
       {label || showPercent ? (
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <View style={styles.header}>
           {label ? (
             <AppText variant="caption" color="secondary">
               {label}
@@ -48,21 +68,9 @@ export function ProgressBar({
       <View
         accessibilityRole="progressbar"
         accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
-        style={{
-          height,
-          borderRadius: theme.radius.pill,
-          backgroundColor: theme.colors.sunken,
-          overflow: 'hidden',
-        }}
+        style={styles.track}
       >
-        <View
-          style={{
-            width: `${clamped * 100}%`,
-            height: '100%',
-            borderRadius: theme.radius.pill,
-            backgroundColor: fg,
-          }}
-        />
+        <View style={styles.fill} />
       </View>
     </View>
   );

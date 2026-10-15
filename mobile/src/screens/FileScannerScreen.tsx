@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme';
 import {
   AlertBanner,
@@ -45,6 +45,25 @@ const PHASE_LABELS: Record<string, string> = {
  */
 export function FileScannerScreen(): React.JSX.Element {
   const theme = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: { gap: theme.spacing.xl },
+        section: { gap: theme.spacing.md },
+        header: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+        cardPad: { padding: theme.spacing.lg, gap: theme.spacing.sm },
+        stackSm: { gap: theme.spacing.sm },
+        divider: {
+          height: 1,
+          marginLeft: theme.spacing.lg,
+          backgroundColor: theme.colors.border,
+        },
+        dot: { width: 10, height: 10, borderRadius: 5 },
+        row: { flexDirection: 'row', gap: theme.spacing.md },
+        flex1: { flex: 1 },
+      }),
+    [theme],
+  );
   const navigation = useRootNavigation();
   const records = useScanStore((s) => s.records);
   const createFromAPI = useScanStore((s) => s.createFromAPI);
@@ -91,10 +110,10 @@ export function FileScannerScreen(): React.JSX.Element {
 
   return (
     <Screen scroll edges={['left', 'right']}>
-      <View style={{ gap: theme.spacing.xl }}>
+      <View style={styles.root}>
         <Card>
-          <View style={{ gap: theme.spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <View style={styles.section}>
+            <View style={styles.header}>
               <FileText size={24} color={theme.colors.accent} />
               <AppText variant="heading">Scan a file</AppText>
             </View>
@@ -113,7 +132,7 @@ export function FileScannerScreen(): React.JSX.Element {
             message="The native scanning engine is built for Android only. On this platform the scanner cannot read files, so no result is shown."
           />
         ) : (
-          <View style={{ gap: theme.spacing.md }}>
+          <View style={styles.section}>
             <Button
               label={fileScanner.selected ? 'Choose a different file' : 'Choose a file'}
               variant="secondary"
@@ -126,7 +145,7 @@ export function FileScannerScreen(): React.JSX.Element {
 
             {fileScanner.selected ? (
               <Card>
-                <View style={{ padding: theme.spacing.lg, gap: theme.spacing.sm }}>
+                <View style={styles.cardPad}>
                   <AppText variant="caption" color="secondary">
                     Selected file
                   </AppText>
@@ -145,7 +164,7 @@ export function FileScannerScreen(): React.JSX.Element {
             />
 
             {fileScanner.isScanning ? (
-              <View style={{ gap: theme.spacing.sm }}>
+              <View style={styles.stackSm}>
                 <ProgressBar value={progressValue} label={progressLabel} showPercent tone="info" />
                 <Button
                   label="Cancel scan"
@@ -186,7 +205,7 @@ export function FileScannerScreen(): React.JSX.Element {
             </Card>
 
             {outcome ? (
-              <View style={{ gap: theme.spacing.md }}>
+              <View style={styles.section}>
                 <SectionHeader title="Result" />
                 <FileScanResultCard
                   outcome={outcome}
@@ -206,13 +225,7 @@ export function FileScannerScreen(): React.JSX.Element {
               {fileScans.map((scan, index) => (
                 <View key={scan.id}>
                   {index > 0 ? (
-                    <View
-                      style={{
-                        height: 1,
-                        marginLeft: theme.spacing.lg,
-                        backgroundColor: theme.colors.border,
-                      }}
-                    />
+                    <View style={styles.divider} />
                   ) : null}
                   <ListRow
                     title={scan.fileName ?? 'File'}
@@ -220,12 +233,12 @@ export function FileScannerScreen(): React.JSX.Element {
                     meta={scan.fileHash ? truncateMiddle(scan.fileHash) : undefined}
                     leading={
                       <View
-                        style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: 5,
-                          backgroundColor: theme.colors[toneDotRole(statusTone(scan.threatLevel))],
-                        }}
+                        style={[
+                          styles.dot,
+                          {
+                            backgroundColor: theme.colors[toneDotRole(statusTone(scan.threatLevel))],
+                          },
+                        ]}
                       />
                     }
                     onPress={() => navigation.navigate('ScanDetail', { scanId: scan.id })}
@@ -237,9 +250,9 @@ export function FileScannerScreen(): React.JSX.Element {
         ) : null}
 
         <Card>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+          <View style={styles.row}>
             <ShieldCheck size={20} color={theme.colors.safe} />
-            <AppText variant="caption" color="secondary" style={{ flex: 1 }}>
+            <AppText variant="caption" color="secondary" style={styles.flex1}>
               A local scan that finds nothing is reported as “Unverified”, never “Safe”. Only the
               reputation service can confirm a file is known-good.
             </AppText>

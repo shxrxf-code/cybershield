@@ -20,8 +20,10 @@ intelligence behind a single authenticated API.
 │  │              Native layer (isolated modules)                      │    │
 │  │  scanner/ (FileScannerModule · FileScanner · HashScanner ·        │    │
 │  │            SignatureScanner · ScanResult)                          │    │
-│  │  planned: NotificationMonitorService · BackgroundWorkers ·         │    │
-│  │           BootReceiver · ApkInspector                              │    │
+│  │  appinspection/ (AppInspectionModule · AppInspectionService ·      │    │
+│  │               AppRiskAnalyzer)                                     │    │
+│  │  notification/ (NotificationMonitorService + bridge + prefs)       │    │
+│  │  planned: BackgroundWorkers · BootReceiver · ApkInspector          │    │
 │  └──────────────────────────────────────────────────────────────────┘    │
 │                               │                                          │
 │  ┌────────────────────────────▼─────────────────────────────────────┐    │
@@ -66,7 +68,7 @@ mobile/src/
 ├── screens/        one folder per screen; containers own data, children don't
 ├── navigation/     navigators, typed route params, deep links
 ├── api/            backend client (URL + file-hash reputation lookups)
-├── native/         typed bridges to native modules (FileScanner*)
+├── native/         typed bridges to native modules (FileScanner*, AppInspectionNative, NotificationMonitorNative)
 ├── hooks/          useFileScanner, useUrlScan, useThreatAlerts…
 ├── store/          Zustand stores (settings, scans, alerts)
 ├── db/             SQLite bootstrap + repositories + migrations
@@ -115,6 +117,20 @@ mobile/android/app/src/main/java/com/threatguard/mobile/notification/
 ```
 
 Registration: `NotificationMonitorPackage()` added to `MainApplication.kt`. Manifest declares the service with `android:exported="false"`, `android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"` and the required intent-filter. Manifest also declares `POST_NOTIFICATIONS` (Android 13+).
+
+### Implemented — app inspection (`com.threatguard.mobile.appinspection`)
+
+The app inspection module enumerates installed applications via `PackageManager`, analyzes their requested permissions, and produces a transparent risk assessment (Low / Medium / High). It respects Android 11+ package visibility using `<queries>` in the manifest instead of `QUERY_ALL_PACKAGES`.
+
+```
+mobile/android/app/src/main/java/com/threatguard/mobile/appinspection/
+├── AppInspectionPackage.kt      Package registration
+├── AppInspectionModule.kt       RN bridge: inspectAllApps, inspectPackage, cancelInspection
+├── AppInspectionService.kt      Background executor, orchestrates enumeration
+└── AppRiskAnalyzer.kt           Permission analysis, risk scoring, signature/debug detection
+```
+
+Registration: `AppInspectionPackage()` added to `MainApplication.kt`. Manifest declares `<queries>` for common intent filters (launcher, https, share, mailto, dial) so the inspection sees most user-installed apps without requiring `QUERY_ALL_PACKAGES`.
 
 ### Planned (later phases)
 

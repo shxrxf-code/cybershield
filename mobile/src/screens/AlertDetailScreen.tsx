@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import {
@@ -27,6 +27,22 @@ import type { RootStackParamList } from '../navigation/types';
  */
 export function AlertDetailScreen(): React.JSX.Element {
   const theme = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: { gap: theme.spacing.xl },
+        card: { gap: theme.spacing.md },
+        titleRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+        flexFill: { flex: 1 },
+        badgeRow: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
+        detail: { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm },
+        noteRow: { flexDirection: 'row', gap: theme.spacing.md },
+        actions: { gap: theme.spacing.md },
+      }),
+    [theme],
+  );
+
   const navigation = useRootNavigation();
   const route = useRoute<RouteProp<RootStackParamList, 'AlertDetail'>>();
   const { alertId } = route.params;
@@ -59,20 +75,20 @@ export function AlertDetailScreen(): React.JSX.Element {
 
   return (
     <Screen scroll edges={['left', 'right']}>
-      <View style={{ gap: theme.spacing.xl }}>
+      <View style={styles.content}>
         <Card tone={tone}>
-          <View style={{ gap: theme.spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <View style={styles.card}>
+            <View style={styles.titleRow}>
               {tone === 'malicious' ? (
                 <TriangleAlert size={24} color={theme.colors.malicious} />
               ) : (
                 <ShieldAlert size={24} color={theme.colors[tone]} />
               )}
-              <AppText variant="heading" style={{ flex: 1 }}>
+              <AppText variant="heading" style={styles.flexFill}>
                 {threatTypeLabel(alert.threatType)}
               </AppText>
             </View>
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+            <View style={styles.badgeRow}>
               <Badge label={severityLabel(alert.severity)} tone={tone} />
               {alert.category ? <Badge label={categoryLabel(alert.category)} tone="unknown" /> : null}
             </View>
@@ -91,7 +107,7 @@ export function AlertDetailScreen(): React.JSX.Element {
         <View>
           <SectionHeader title="Detection" />
           <Card flush>
-            <View style={{ paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }}>
+            <View style={styles.detail}>
               <KeyValue label="Reason" value={alert.detectionReason} />
               {alert.target ? <KeyValue label="Target" value={alert.target} mono selectable /> : null}
               {alert.sourceApplication ? (
@@ -104,16 +120,16 @@ export function AlertDetailScreen(): React.JSX.Element {
         </View>
 
         <Card>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+          <View style={styles.noteRow}>
             <ShieldAlert size={20} color={theme.colors.textSecondary} />
-            <AppText variant="caption" color="secondary" style={{ flex: 1 }}>
+            <AppText variant="caption" color="secondary" style={styles.flexFill}>
               ThreatGuard does not open flagged links or files for you. If you recognise the target as
               a threat, delete the message or file rather than interacting with it.
             </AppText>
           </View>
         </Card>
 
-        <View style={{ gap: theme.spacing.md }}>
+        <View style={styles.actions}>
           <Button
             label={alert.isRead ? 'Mark as unread' : 'Mark as read'}
             variant="secondary"

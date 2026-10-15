@@ -1,5 +1,5 @@
-import React from 'react';
-import { Linking, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { Linking, StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme';
 import {
   AlertBanner,
@@ -43,6 +43,19 @@ interface PermissionEntry {
  */
 export function PermissionsScreen(): React.JSX.Element {
   const theme = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: { gap: theme.spacing.xl },
+        entry: { padding: theme.spacing.lg, gap: theme.spacing.sm },
+        entryHeader: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
+        entryTitle: { flex: 1 },
+        section: { gap: theme.spacing.md },
+        sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+      }),
+    [theme],
+  );
 
   const entries: PermissionEntry[] = [
     {
@@ -107,7 +120,7 @@ export function PermissionsScreen(): React.JSX.Element {
 
   return (
     <Screen scroll edges={['left', 'right']}>
-      <View style={{ gap: theme.spacing.xl }}>
+      <View style={styles.content}>
         <AlertBanner
           tone="info"
           icon={<InfoIcon size={20} color={theme.colors.info} />}
@@ -121,10 +134,10 @@ export function PermissionsScreen(): React.JSX.Element {
             {entries.map((entry, index) => (
               <View key={entry.id}>
                 {index > 0 ? <Divider /> : null}
-                <View style={{ padding: theme.spacing.lg, gap: theme.spacing.sm }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+                <View style={styles.entry}>
+                  <View style={styles.entryHeader}>
                     {entry.icon}
-                    <AppText variant="bodyStrong" style={{ flex: 1 }}>
+                    <AppText variant="bodyStrong" style={styles.entryTitle}>
                       {entry.title}
                     </AppText>
                     <Badge label={entry.status} tone={entry.statusTone} size="sm" />
@@ -142,8 +155,8 @@ export function PermissionsScreen(): React.JSX.Element {
         </View>
 
         <Card>
-          <View style={{ gap: theme.spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
               <ShieldCheck size={20} color={theme.colors.safe} />
               <AppText variant="subheading">What we never do</AppText>
             </View>

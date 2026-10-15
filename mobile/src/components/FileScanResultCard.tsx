@@ -1,5 +1,5 @@
-import React from 'react';
-import { View } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme';
 import { AppText, Badge, Button, Card, Divider, KeyValue } from './ui';
 import { ShieldAlert, ShieldCheck, TriangleAlert } from 'lucide-react-native';
@@ -41,11 +41,28 @@ export function FileScanResultCard({
   const threatFindings = outcome.findings.filter((f) => f.severity !== 'info');
   const notes = outcome.findings.filter((f) => f.severity === 'info');
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: { padding: theme.spacing.lg, gap: theme.spacing.md },
+        header: { gap: theme.spacing.sm },
+        row: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' },
+        fileName: { flexShrink: 1 },
+        section: { gap: theme.spacing.sm },
+        findingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm },
+        findingText: { flex: 1 },
+        notes: { gap: theme.spacing.xs },
+        actions: { flexDirection: 'row', gap: theme.spacing.md, flexWrap: 'wrap' },
+        savedNote: { alignSelf: 'center' },
+      }),
+    [theme],
+  );
+
   return (
     <Card tone={tone}>
-      <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
-        <View style={{ gap: theme.spacing.sm }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <View style={styles.row}>
             {outcome.verdict === 'MALICIOUS' ? (
               <ShieldAlert size={18} color={theme.colors.malicious} />
             ) : outcome.verdict === 'SUSPICIOUS' ? (
@@ -53,7 +70,7 @@ export function FileScanResultCard({
             ) : (
               <ShieldCheck size={18} color={theme.colors.textSecondary} />
             )}
-            <AppText variant="bodyStrong" style={{ flexShrink: 1 }}>
+            <AppText variant="bodyStrong" style={styles.fileName}>
               {outcome.fileName}
             </AppText>
             <Badge label={statusLabel(outcome.verdict)} tone={tone} />
@@ -75,7 +92,7 @@ export function FileScanResultCard({
           ) : null}
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+        <View style={styles.row}>
           <Badge label={reputationLabel(outcome.reputation)} tone={reputationTone(outcome.reputation)} size="sm" />
           {outcome.truncated ? (
             <Badge label="Partial scan" tone="suspicious" size="sm" />
@@ -89,14 +106,14 @@ export function FileScanResultCard({
         ) : null}
 
         {threatFindings.length > 0 ? (
-          <View style={{ gap: theme.spacing.sm }}>
+          <View style={styles.section}>
             <AppText variant="caption" color="secondary">
               {threatFindings.length === 1 ? 'Finding' : 'Findings'}
             </AppText>
             {threatFindings.map((finding) => (
-              <View key={finding.code} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+              <View key={finding.code} style={styles.findingRow}>
                 <Badge label={finding.severity} tone={findingTone(finding.severity)} size="sm" />
-                <AppText variant="caption" color="secondary" style={{ flex: 1 }}>
+                <AppText variant="caption" color="secondary" style={styles.findingText}>
                   {findingLabel(finding)}
                 </AppText>
               </View>
@@ -105,7 +122,7 @@ export function FileScanResultCard({
         ) : null}
 
         {notes.length > 0 ? (
-          <View style={{ gap: theme.spacing.xs }}>
+          <View style={styles.notes}>
             {notes.map((note) => (
               <AppText key={note.code} variant="caption" color="tertiary">
                 • {findingLabel(note)}
@@ -115,13 +132,13 @@ export function FileScanResultCard({
         ) : null}
 
         {(onScanAnother || onSave) && (
-          <View style={{ flexDirection: 'row', gap: theme.spacing.md, flexWrap: 'wrap' }}>
+          <View style={styles.actions}>
             {onScanAnother ? (
               <Button label="Scan another" variant="ghost" onPress={onScanAnother} />
             ) : null}
             {onSave && !saved ? <Button label="Save to history" onPress={onSave} /> : null}
             {saved ? (
-              <AppText variant="caption" color="secondary" style={{ alignSelf: 'center' }}>
+              <AppText variant="caption" color="secondary" style={styles.savedNote}>
                 Saved to history
               </AppText>
             ) : null}

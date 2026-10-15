@@ -1,5 +1,5 @@
-import React from 'react';
-import { ActivityIndicator, View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { ActivityIndicator, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme';
 import { AppText } from './Text';
 
@@ -10,18 +10,20 @@ export interface LoadingStateProps {
 
 export function LoadingState({ label = 'Loading…', style }: LoadingStateProps): React.JSX.Element {
   const theme = useTheme();
-  return (
-    <View
-      style={[
-        {
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
           alignItems: 'center',
           justifyContent: 'center',
           gap: theme.spacing.md,
           paddingVertical: theme.spacing.xxxl,
         },
-        style,
-      ]}
-    >
+      }),
+    [theme],
+  );
+  return (
+    <View style={[styles.root, style]}>
       <ActivityIndicator size="large" color={theme.colors.accent} />
       <AppText variant="caption" color="secondary">
         {label}

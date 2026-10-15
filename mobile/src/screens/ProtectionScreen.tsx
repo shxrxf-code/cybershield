@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme';
 import {
   AppText,
@@ -31,13 +31,24 @@ export function ProtectionScreen(): React.JSX.Element {
   const backgroundProtection = useSettingsStore((s) => s.backgroundProtection);
   const setBackgroundProtection = useSettingsStore((s) => s.setBackgroundProtection);
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: { gap: theme.spacing.xl },
+        deviceSection: { gap: theme.spacing.md },
+        scanRow: { flexDirection: 'row', gap: theme.spacing.md },
+        stackMd: { gap: theme.spacing.md },
+      }),
+    [theme],
+  );
+
   return (
     <Screen scroll edges={['left', 'right']}>
-      <View style={{ gap: theme.spacing.xl }}>
+      <View style={styles.content}>
         {/* Device scans */}
-        <View style={{ gap: theme.spacing.md }}>
+        <View style={styles.deviceSection}>
           <SectionHeader title="Device scan" subtitle="Check apps and files on this device" />
-          <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+          <View style={styles.scanRow}>
             <ActionTile
               title="Quick scan"
               caption="Apps & key files"
@@ -110,7 +121,7 @@ export function ProtectionScreen(): React.JSX.Element {
         </View>
 
         <Card>
-          <View style={{ gap: theme.spacing.md }}>
+          <View style={styles.stackMd}>
             <AppText variant="subheading">How protection works</AppText>
             <AppText variant="body" color="secondary">
               Link checks query vetted reputation services. File and app checks run on the device;
@@ -127,7 +138,14 @@ export function ProtectionScreen(): React.JSX.Element {
 
 function Separator(): React.JSX.Element {
   const theme = useTheme();
-  return <View style={{ height: 1, marginLeft: theme.spacing.lg, backgroundColor: theme.colors.border }} />;
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        separator: { height: 1, marginLeft: theme.spacing.lg, backgroundColor: theme.colors.border },
+      }),
+    [theme],
+  );
+  return <View style={styles.separator} />;
 }
 
 interface ActionTileProps {
@@ -140,11 +158,20 @@ interface ActionTileProps {
 
 function ActionTile({ title, caption, icon, onPress, style }: ActionTileProps): React.JSX.Element {
   const theme = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: { flex: 1, minHeight: 120 },
+        inner: { gap: theme.spacing.sm, flex: 1, justifyContent: 'space-between' },
+        captionGroup: { gap: 2 },
+      }),
+    [theme],
+  );
   return (
-    <Card onPress={onPress} style={[{ flex: 1, minHeight: 120 }, style]}>
-      <View style={{ gap: theme.spacing.sm, flex: 1, justifyContent: 'space-between' }}>
+    <Card onPress={onPress} style={[styles.card, style]}>
+      <View style={styles.inner}>
         {icon}
-        <View style={{ gap: 2 }}>
+        <View style={styles.captionGroup}>
           <AppText variant="subheading">{title}</AppText>
           <AppText variant="caption" color="secondary">
             {caption}

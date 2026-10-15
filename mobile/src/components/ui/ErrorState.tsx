@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme';
 import { AppText } from './Text';
 import { Button } from './Button';
@@ -27,20 +27,24 @@ export function ErrorState({
   style,
 }: ErrorStateProps): React.JSX.Element {
   const theme = useTheme();
-  return (
-    <View
-      style={[
-        {
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
           alignItems: 'center',
           justifyContent: 'center',
           gap: theme.spacing.sm,
           paddingVertical: theme.spacing.xxxl,
           paddingHorizontal: theme.spacing.xl,
         },
-        style,
-      ]}
-    >
-      {icon ? <View style={{ marginBottom: theme.spacing.xs }}>{icon}</View> : null}
+        icon: { marginBottom: theme.spacing.xs },
+        action: { marginTop: theme.spacing.md },
+      }),
+    [theme],
+  );
+  return (
+    <View style={[styles.root, style]}>
+      {icon ? <View style={styles.icon}>{icon}</View> : null}
       <AppText variant="subheading" color="malicious" align="center">
         {title}
       </AppText>
@@ -48,7 +52,7 @@ export function ErrorState({
         {message}
       </AppText>
       {onRetry ? (
-        <View style={{ marginTop: theme.spacing.md }}>
+        <View style={styles.action}>
           <Button label={retryLabel} variant="secondary" onPress={onRetry} />
         </View>
       ) : null}

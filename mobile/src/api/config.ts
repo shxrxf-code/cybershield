@@ -26,7 +26,6 @@ export const API_BASE_URL = __DEV__
 let apiKey: string | undefined;
 
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const local = require('./local-config');
   apiKey = local.DEV_API_KEY;
 } catch {

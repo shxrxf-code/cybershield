@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { toneColors, useTheme } from '../../theme';
 import type { ThreatTone } from '../../theme/theme';
@@ -39,9 +39,17 @@ export function Gauge({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - clamped / 100);
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { width: size, height: size, alignItems: 'center', justifyContent: 'center' },
+        center: { position: 'absolute', alignItems: 'center' },
+      }),
+    [size],
+  );
 
   return (
-    <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
+    <View style={[styles.container, style]}>
       <Svg width={size} height={size}>
         <Circle
           cx={size / 2}
@@ -65,7 +73,7 @@ export function Gauge({
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      <View style={{ position: 'absolute', alignItems: 'center' }}>
+      <View style={styles.center}>
         {label ? <AppText variant="title">{label}</AppText> : null}
         {caption ? (
           <AppText variant="caption" color="secondary">

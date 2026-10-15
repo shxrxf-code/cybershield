@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { toneColors, useTheme } from '../../theme';
 import type { ThreatTone } from '../../theme/theme';
 import { AppText } from './Text';
@@ -17,11 +17,10 @@ export interface BadgeProps {
 export function Badge({ label, tone = 'unknown', icon, size = 'md', style }: BadgeProps): React.JSX.Element {
   const theme = useTheme();
   const { fg, bg } = toneColors(theme, tone);
-
-  return (
-    <View
-      style={[
-        {
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
           flexDirection: 'row',
           alignItems: 'center',
           gap: theme.spacing.xs,
@@ -33,11 +32,15 @@ export function Badge({ label, tone = 'unknown', icon, size = 'md', style }: Bad
           borderWidth: 1,
           borderColor: fg,
         },
-        style,
-      ]}
-    >
+        text: { color: fg },
+      }),
+    [theme, fg, bg, size],
+  );
+
+  return (
+    <View style={[styles.root, style]}>
       {icon}
-      <AppText variant={size === 'sm' ? 'caption' : 'label'} style={{ color: fg }}>
+      <AppText variant={size === 'sm' ? 'caption' : 'label'} style={styles.text}>
         {label}
       </AppText>
     </View>

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import { AppText } from './Text';
@@ -36,20 +36,27 @@ export function ListRow({
   testID,
 }: ListRowProps): React.JSX.Element {
   const theme = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        row: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.md,
+          paddingVertical: theme.spacing.md,
+          paddingHorizontal: theme.spacing.lg,
+          minHeight: 60,
+        },
+        text: { flex: 1, gap: 2 },
+        pressed: { backgroundColor: theme.colors.overlay },
+      }),
+    [theme],
+  );
 
   const content = (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.md,
-        paddingVertical: theme.spacing.md,
-        paddingHorizontal: theme.spacing.lg,
-        minHeight: 60,
-      }}
-    >
+    <View style={styles.row}>
       {leading ? <View>{leading}</View> : null}
-      <View style={{ flex: 1, gap: 2 }}>
+      <View style={styles.text}>
         <AppText variant="bodyStrong" color={destructive ? 'malicious' : 'primary'} numberOfLines={1}>
           {title}
         </AppText>
@@ -81,7 +88,7 @@ export function ListRow({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
       android_ripple={{ color: theme.colors.overlay }}
-      style={({ pressed }) => [pressed ? { backgroundColor: theme.colors.overlay } : null, style]}
+      style={({ pressed }) => [pressed ? styles.pressed : null, style]}
     >
       {content}
     </Pressable>

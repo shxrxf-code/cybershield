@@ -87,7 +87,6 @@ export async function transaction<T>(
   fn: (tx: Transaction) => Promise<T>
 ): Promise<T> {
   const db = await getDB();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return db.transaction(fn as any) as Promise<T>;
 }
 

@@ -6,6 +6,7 @@ import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
+import com.threatguard.mobile.appinspection.AppInspectionPackage
 import com.threatguard.mobile.notification.NotificationMonitorPackage
 import com.threatguard.mobile.scanner.FileScannerPackage
 
@@ -20,6 +21,7 @@ class MainApplication : Application(), ReactApplication {
           // add(MyReactNativePackage())
           add(FileScannerPackage())
           add(NotificationMonitorPackage())
+          add(AppInspectionPackage())
         },
     )
   }

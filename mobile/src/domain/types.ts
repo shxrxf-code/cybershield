@@ -127,6 +127,8 @@ export interface SecuritySettings {
   notificationMonitoring: boolean;
   backgroundProtection: boolean;
   alertNotifications: boolean;
+  /** Packages the user asked us not to analyse (per-app monitoring toggles). */
+  notificationIgnoredPackages: string[];
   privacyPreferences: PrivacyPreferences;
   updatedAt?: string;
 }

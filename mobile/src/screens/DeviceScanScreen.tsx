@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import {
@@ -67,6 +67,38 @@ const COVERAGE: CoverageItem[] = [
  */
 export function DeviceScanScreen(): React.JSX.Element {
   const theme = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: { gap: theme.spacing.xl },
+        section: { gap: theme.spacing.md },
+        header: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+        chipRow: { flexDirection: 'row', gap: theme.spacing.sm },
+        divider: {
+          height: 1,
+          marginLeft: theme.spacing.lg,
+          backgroundColor: theme.colors.border,
+        },
+        dot: { width: 10, height: 10, borderRadius: 5 },
+        cardPad: { padding: theme.spacing.lg, gap: theme.spacing.sm },
+        stackSm: { gap: theme.spacing.sm },
+        row: { flexDirection: 'row', gap: theme.spacing.md },
+        flex1: { flex: 1 },
+        coverageRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.md,
+          padding: theme.spacing.lg,
+          borderTopColor: theme.colors.border,
+        },
+        coverageRowFirst: { borderTopWidth: 0 },
+        coverageRowRest: { borderTopWidth: 1 },
+        iconWrap: { opacity: 0.9 },
+        flex1Gap2: { flex: 1, gap: 2 },
+        stackXs: { gap: theme.spacing.xs },
+      }),
+    [theme],
+  );
   const navigation = useRootNavigation();
   const route = useRoute<RouteProp<RootStackParamList, 'DeviceScan'>>();
   const mode = route.params.mode;
@@ -139,10 +171,10 @@ export function DeviceScanScreen(): React.JSX.Element {
 
   return (
     <Screen scroll edges={['left', 'right']}>
-      <View style={{ gap: theme.spacing.xl }}>
+      <View style={styles.root}>
         <Card>
-          <View style={{ gap: theme.spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <View style={styles.section}>
+            <View style={styles.header}>
               <ScanLine size={24} color={theme.colors.accent} />
               <AppText variant="heading">{isFull ? 'Full scan' : 'Quick scan'}</AppText>
             </View>
@@ -151,7 +183,7 @@ export function DeviceScanScreen(): React.JSX.Element {
                 ? 'Check several files at once. ThreatGuard inspects each one on-device and reports what it found.'
                 : 'Check a single file before you open it. The file is inspected on-device and never modified.'}
             </AppText>
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            <View style={styles.chipRow}>
               <Chip label="Quick" selected={!isFull} onPress={() => switchMode('quick')} />
               <Chip label="Full" selected={isFull} onPress={() => switchMode('full')} />
             </View>
@@ -173,7 +205,7 @@ export function DeviceScanScreen(): React.JSX.Element {
             message="The native scanning engine is built for Android only. On this platform no file result is produced."
           />
         ) : isFull ? (
-          <View style={{ gap: theme.spacing.md }}>
+          <View style={styles.section}>
             <Button
               label="Choose files"
               variant="secondary"
@@ -191,13 +223,7 @@ export function DeviceScanScreen(): React.JSX.Element {
                 {multi.files.map((file, index) => (
                   <View key={file.uri}>
                     {index > 0 ? (
-                      <View
-                        style={{
-                          height: 1,
-                          marginLeft: theme.spacing.lg,
-                          backgroundColor: theme.colors.border,
-                        }}
-                      />
+                      <View style={styles.divider} />
                     ) : null}
                     <ListRow title={file.name} showChevron={false} />
                   </View>
@@ -215,7 +241,7 @@ export function DeviceScanScreen(): React.JSX.Element {
             />
 
             {isScanning ? (
-              <View style={{ gap: theme.spacing.sm }}>
+              <View style={styles.stackSm}>
                 <ProgressBar value={progressValue} label={progressLabel} showPercent tone="info" />
                 <Button
                   label="Cancel scan"
@@ -229,7 +255,7 @@ export function DeviceScanScreen(): React.JSX.Element {
             ) : null}
 
             {multi.outcomes.length > 0 ? (
-              <View style={{ gap: theme.spacing.md }}>
+              <View style={styles.section}>
                 <SectionHeader
                   title="Results"
                   subtitle={`${multi.outcomes.length} scanned · ${threatCount} need attention`}
@@ -238,13 +264,7 @@ export function DeviceScanScreen(): React.JSX.Element {
                   {multi.outcomes.map((outcome, index) => (
                     <View key={outcome.uri}>
                       {index > 0 ? (
-                        <View
-                          style={{
-                            height: 1,
-                            marginLeft: theme.spacing.lg,
-                            backgroundColor: theme.colors.border,
-                          }}
-                        />
+                        <View style={styles.divider} />
                       ) : null}
                       <ListRow
                         title={outcome.fileName}
@@ -253,13 +273,13 @@ export function DeviceScanScreen(): React.JSX.Element {
                         showChevron={false}
                         leading={
                           <View
-                            style={{
-                              width: 10,
-                              height: 10,
-                              borderRadius: 5,
-                              backgroundColor:
-                                theme.colors[toneDotRole(statusTone(outcome.verdict))],
-                            }}
+                            style={[
+                              styles.dot,
+                              {
+                                backgroundColor:
+                                  theme.colors[toneDotRole(statusTone(outcome.verdict))],
+                              },
+                            ]}
                           />
                         }
                         trailing={<Badge label={statusLabel(outcome.verdict)} tone={statusTone(outcome.verdict)} size="sm" />}
@@ -277,7 +297,7 @@ export function DeviceScanScreen(): React.JSX.Element {
             ) : null}
           </View>
         ) : (
-          <View style={{ gap: theme.spacing.md }}>
+          <View style={styles.section}>
             <Button
               label={single.selected ? 'Choose a different file' : 'Choose a file'}
               variant="secondary"
@@ -290,7 +310,7 @@ export function DeviceScanScreen(): React.JSX.Element {
 
             {single.selected ? (
               <Card>
-                <View style={{ padding: theme.spacing.lg, gap: theme.spacing.sm }}>
+                <View style={styles.cardPad}>
                   <AppText variant="caption" color="secondary">
                     Selected file
                   </AppText>
@@ -309,7 +329,7 @@ export function DeviceScanScreen(): React.JSX.Element {
             />
 
             {isScanning ? (
-              <View style={{ gap: theme.spacing.sm }}>
+              <View style={styles.stackSm}>
                 <ProgressBar value={progressValue} label={progressLabel} showPercent tone="info" />
                 <Button
                   label="Cancel scan"
@@ -323,7 +343,7 @@ export function DeviceScanScreen(): React.JSX.Element {
             ) : null}
 
             {single.outcome ? (
-              <View style={{ gap: theme.spacing.md }}>
+              <View style={styles.section}>
                 <SectionHeader title="Result" />
                 <FileScanResultCard
                   outcome={single.outcome}
@@ -359,9 +379,9 @@ export function DeviceScanScreen(): React.JSX.Element {
 
         {!capabilities.appScan ? (
           <Card>
-            <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+            <View style={styles.row}>
               <ShieldAlert size={20} color={theme.colors.textSecondary} />
-              <AppText variant="caption" color="secondary" style={{ flex: 1 }}>
+              <AppText variant="caption" color="secondary" style={styles.flex1}>
                 Installed-app inspection and background storage scanning are planned for a later
                 phase. This screen only reports results from the files you select.
               </AppText>
@@ -375,17 +395,13 @@ export function DeviceScanScreen(): React.JSX.Element {
             {COVERAGE.map((item, index) => (
               <View
                 key={item.title}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: theme.spacing.md,
-                  padding: theme.spacing.lg,
-                  borderTopWidth: index === 0 ? 0 : 1,
-                  borderTopColor: theme.colors.border,
-                }}
+                style={[
+                  styles.coverageRow,
+                  index === 0 ? styles.coverageRowFirst : styles.coverageRowRest,
+                ]}
               >
-                <View style={{ opacity: 0.9 }}>{item.icon}</View>
-                <View style={{ flex: 1, gap: 2 }}>
+                <View style={styles.iconWrap}>{item.icon}</View>
+                <View style={styles.flex1Gap2}>
                   <AppText variant="bodyStrong">{item.title}</AppText>
                   <AppText variant="caption" color="secondary">
                     {item.detail}
@@ -403,7 +419,7 @@ export function DeviceScanScreen(): React.JSX.Element {
               tone={previous.threatsFound > 0 ? statusTone(previous.threatLevel) : 'unknown'}
               onPress={() => navigation.navigate('ScanDetail', { scanId: previous.id })}
             >
-              <View style={{ gap: theme.spacing.xs }}>
+              <View style={styles.stackXs}>
                 <AppText variant="bodyStrong">
                   {previous.threatsFound > 0
                     ? `${previous.threatsFound} ${previous.threatsFound === 1 ? 'threat' : 'threats'} found`

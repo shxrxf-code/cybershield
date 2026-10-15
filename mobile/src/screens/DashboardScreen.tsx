@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme';
 import {
   AlertBanner,
@@ -38,13 +38,45 @@ export function DashboardScreen(): React.JSX.Element {
   const unprotected = !notificationMonitoring && !backgroundProtection;
   const hasUnreadThreat = unread > 0;
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: { gap: theme.spacing.xl },
+        statusInner: { gap: theme.spacing.md },
+        statusRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+        actionRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+        statsRow: { flexDirection: 'row', gap: theme.spacing.md },
+        lastScanInner: { gap: theme.spacing.xs },
+        emptyAlerts: {
+          padding: theme.spacing.lg,
+          flexDirection: 'row',
+          gap: theme.spacing.sm,
+          alignItems: 'center',
+        },
+        divider: { height: 1, backgroundColor: theme.colors.border },
+        alertDot: { width: 10, height: 10, borderRadius: 5 },
+        scanDot: { width: 8, height: 8, borderRadius: 4 },
+      }),
+    [theme],
+  );
+
+  const dotTones = useMemo(
+    () => ({
+      safe: { backgroundColor: theme.colors.safe },
+      suspicious: { backgroundColor: theme.colors.suspicious },
+      malicious: { backgroundColor: theme.colors.malicious },
+      unknown: { backgroundColor: theme.colors.unknown },
+    }),
+    [theme],
+  );
+
   return (
     <Screen scroll edges={['left', 'right']}>
-      <View style={{ gap: theme.spacing.xl }}>
+      <View style={styles.content}>
         {/* Protection status */}
         <Card tone={unprotected ? 'suspicious' : 'safe'}>
-          <View style={{ gap: theme.spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <View style={styles.statusInner}>
+            <View style={styles.statusRow}>
               {unprotected ? (
                 <ShieldAlert size={24} color={theme.colors.suspicious} />
               ) : (
@@ -70,7 +102,7 @@ export function DashboardScreen(): React.JSX.Element {
             title={`${unread} unread ${unread === 1 ? 'alert' : 'alerts'}`}
             message="Review the flagged threats to decide what to do next."
             action={
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={styles.actionRow}>
                 <AppText variant="label" color="malicious">
                   Open alerts
                 </AppText>
@@ -81,7 +113,7 @@ export function DashboardScreen(): React.JSX.Element {
         ) : null}
 
         {/* Statistics */}
-        <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+        <View style={styles.statsRow}>
           <StatTile
             label="Scans run"
             value={totals.totalScans}
@@ -111,7 +143,7 @@ export function DashboardScreen(): React.JSX.Element {
               tone={lastScan.threatsFound > 0 ? statusTone(lastScan.threatLevel) : 'safe'}
               onPress={() => navigation.navigate('ScanDetail', { scanId: lastScan.id })}
             >
-              <View style={{ gap: theme.spacing.xs }}>
+              <View style={styles.lastScanInner}>
                 <AppText variant="bodyStrong">
                   {lastScan.threatsFound > 0
                     ? `${lastScan.threatsFound} ${lastScan.threatsFound === 1 ? 'threat' : 'threats'} found`
@@ -143,7 +175,7 @@ export function DashboardScreen(): React.JSX.Element {
           />
           <Card flush>
             {recentAlerts.length === 0 ? (
-              <View style={{ padding: theme.spacing.lg, flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'center' }}>
+              <View style={styles.emptyAlerts}>
                 <Bell size={18} color={theme.colors.textTertiary} />
                 <AppText variant="body" color="secondary">
                   No alerts yet.
@@ -152,7 +184,7 @@ export function DashboardScreen(): React.JSX.Element {
             ) : (
               recentAlerts.map((alert, index) => (
                 <View key={alert.id}>
-                  {index > 0 ? <View style={{ height: 1, backgroundColor: theme.colors.border }} /> : null}
+                  {index > 0 ? <View style={styles.divider} /> : null}
                   <ListRow
                     title={threatTypeLabel(alert.threatType)}
                     subtitle={alert.target}
@@ -161,12 +193,7 @@ export function DashboardScreen(): React.JSX.Element {
                     trailing={
                       !alert.isRead ? (
                         <View
-                          style={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: 5,
-                            backgroundColor: theme.colors[severityToDot(alert.severity)],
-                          }}
+                          style={[styles.alertDot, dotTones[severityToDot(alert.severity)]]}
                         />
                       ) : undefined
                     }
@@ -184,7 +211,7 @@ export function DashboardScreen(): React.JSX.Element {
             <Card flush>
               {recentScans.map((scan, index) => (
                 <View key={scan.id}>
-                  {index > 0 ? <View style={{ height: 1, backgroundColor: theme.colors.border }} /> : null}
+                  {index > 0 ? <View style={styles.divider} /> : null}
                   <ListRow
                     title={scan.target ?? scan.fileName ?? scan.scanType}
                     subtitle={`${scan.scanType} · ${scan.filesChecked} checked`}
@@ -192,12 +219,7 @@ export function DashboardScreen(): React.JSX.Element {
                     onPress={() => navigation.navigate('ScanDetail', { scanId: scan.id })}
                     leading={
                       <View
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: 4,
-                          backgroundColor: theme.colors[severityToDot(scan.threatLevel)],
-                        }}
+                        style={[styles.scanDot, dotTones[severityToDot(scan.threatLevel)]]}
                       />
                     }
                   />

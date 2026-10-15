@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { toneColors, useTheme } from '../../theme';
 import type { ThreatTone } from '../../theme/theme';
 import { AppText } from './Text';
@@ -25,12 +25,10 @@ export function AlertBanner({
 }: AlertBannerProps): React.JSX.Element {
   const theme = useTheme();
   const { fg, bg } = toneColors(theme, tone);
-
-  return (
-    <View
-      accessibilityRole="alert"
-      style={[
-        {
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
           flexDirection: 'row',
           gap: theme.spacing.md,
           padding: theme.spacing.md,
@@ -39,18 +37,24 @@ export function AlertBanner({
           borderColor: fg,
           backgroundColor: bg,
         },
-        style,
-      ]}
-    >
-      {icon ? <View style={{ paddingTop: 1 }}>{icon}</View> : null}
-      <View style={{ flex: 1, gap: theme.spacing.xs }}>
+        icon: { paddingTop: 1 },
+        body: { flex: 1, gap: theme.spacing.xs },
+        action: { marginTop: theme.spacing.xs },
+      }),
+    [theme, fg, bg],
+  );
+
+  return (
+    <View accessibilityRole="alert" style={[styles.root, style]}>
+      {icon ? <View style={styles.icon}>{icon}</View> : null}
+      <View style={styles.body}>
         <AppText variant="bodyStrong">{title}</AppText>
         {message ? (
           <AppText variant="caption" color="secondary">
             {message}
           </AppText>
         ) : null}
-        {action ? <View style={{ marginTop: theme.spacing.xs }}>{action}</View> : null}
+        {action ? <View style={styles.action}>{action}</View> : null}
       </View>
     </View>
   );

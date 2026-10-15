@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme';
 import type { ThreatTone } from '../../theme/theme';
 import { AppText } from './Text';
@@ -29,11 +29,10 @@ export function StatTile({
   accessibilityLabel,
 }: StatTileProps): React.JSX.Element {
   const theme = useTheme();
-
-  const body = (
-    <View
-      style={[
-        {
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
           backgroundColor: theme.colors.surface,
           borderRadius: theme.radius.lg,
           borderWidth: 1,
@@ -43,10 +42,15 @@ export function StatTile({
           minWidth: 140,
           flex: 1,
         },
-        style,
-      ]}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+        pressable: { flex: 1 },
+      }),
+    [theme],
+  );
+
+  const body = (
+    <View style={[styles.root, style]}>
+      <View style={styles.header}>
         <AppText variant="caption" color="secondary">
           {label}
         </AppText>
@@ -69,7 +73,7 @@ export function StatTile({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       android_ripple={{ color: theme.colors.overlay }}
-      style={{ flex: 1 }}
+      style={styles.pressable}
     >
       {body}
     </Pressable>

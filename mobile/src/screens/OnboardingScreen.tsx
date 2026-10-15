@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme';
 import { AppText, Button, Card, Screen } from '../components/ui';
 import { BellRing, Lock, ShieldCheck, TriangleAlert } from 'lucide-react-native';
@@ -25,28 +25,40 @@ export function OnboardingScreen(): React.JSX.Element {
     navigation.replace('MainTabs');
   };
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: { flex: 1, justifyContent: 'space-between' },
+        stepWrap: { flex: 1, justifyContent: 'center', gap: theme.spacing.xl },
+        centerGroup: { alignItems: 'center', gap: theme.spacing.md },
+        stackLg: { gap: theme.spacing.lg },
+        centerGroupSm: { alignItems: 'center', gap: theme.spacing.sm },
+        commitmentFirst: { padding: theme.spacing.lg, borderTopWidth: 0, borderTopColor: theme.colors.border },
+        commitment: { padding: theme.spacing.lg, borderTopWidth: 1, borderTopColor: theme.colors.border },
+        attentionRow: { flexDirection: 'row', gap: theme.spacing.md },
+        flex1: { flex: 1 },
+        dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: theme.spacing.xs },
+        actionsRow: { flexDirection: 'row', gap: theme.spacing.md },
+        dotActive: { width: 22, height: 8, borderRadius: 4, backgroundColor: theme.colors.accent },
+        dotInactive: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.borderStrong },
+      }),
+    [theme],
+  );
+
   const dots = useMemo(
     () =>
       Array.from({ length: STEP_COUNT }, (_, index) => (
-        <View
-          key={index}
-          style={{
-            width: index === step ? 22 : 8,
-            height: 8,
-            borderRadius: 4,
-            backgroundColor: index === step ? theme.colors.accent : theme.colors.borderStrong,
-          }}
-        />
+        <View key={index} style={index === step ? styles.dotActive : styles.dotInactive} />
       )),
-    [step, theme],
+    [step, styles],
   );
 
   return (
     <Screen edges={['top', 'bottom', 'left', 'right']}>
-      <View style={{ flex: 1, justifyContent: 'space-between' }}>
-        <View style={{ flex: 1, justifyContent: 'center', gap: theme.spacing.xl }}>
+      <View style={styles.content}>
+        <View style={styles.stepWrap}>
           {step === 0 ? (
-            <View style={{ alignItems: 'center', gap: theme.spacing.md }}>
+            <View style={styles.centerGroup}>
               <ShieldCheck size={72} color={theme.colors.accent} />
               <AppText variant="display" align="center">
                 {APP_NAME}
@@ -59,8 +71,8 @@ export function OnboardingScreen(): React.JSX.Element {
           ) : null}
 
           {step === 1 ? (
-            <View style={{ gap: theme.spacing.lg }}>
-              <View style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+            <View style={styles.stackLg}>
+              <View style={styles.centerGroupSm}>
                 <Lock size={48} color={theme.colors.accent} />
                 <AppText variant="title" align="center">
                   Your data stays yours
@@ -68,14 +80,7 @@ export function OnboardingScreen(): React.JSX.Element {
               </View>
               <Card flush>
                 {PRIVACY_COMMITMENTS.map((commitment, index) => (
-                  <View
-                    key={commitment}
-                    style={{
-                      padding: theme.spacing.lg,
-                      borderTopWidth: index === 0 ? 0 : 1,
-                      borderTopColor: theme.colors.border,
-                    }}
-                  >
+                  <View key={commitment} style={index === 0 ? styles.commitmentFirst : styles.commitment}>
                     <AppText variant="body" color="secondary">
                       {commitment}
                     </AppText>
@@ -86,8 +91,8 @@ export function OnboardingScreen(): React.JSX.Element {
           ) : null}
 
           {step === 2 ? (
-            <View style={{ gap: theme.spacing.lg }}>
-              <View style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+            <View style={styles.stackLg}>
+              <View style={styles.centerGroupSm}>
                 <BellRing size={48} color={theme.colors.accent} />
                 <AppText variant="title" align="center">
                   You are in control
@@ -98,9 +103,9 @@ export function OnboardingScreen(): React.JSX.Element {
                 permission later in Settings.
               </AppText>
               <Card tone="suspicious">
-                <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+                <View style={styles.attentionRow}>
                   <TriangleAlert size={20} color={theme.colors.suspicious} />
-                  <View style={{ flex: 1 }}>
+                  <View style={styles.flex1}>
                     <AppText variant="bodyStrong">This is an early build</AppText>
                     <AppText variant="caption" color="secondary">
                       On-device scanning and message monitoring arrive in later phases. Nothing is
@@ -113,17 +118,15 @@ export function OnboardingScreen(): React.JSX.Element {
           ) : null}
         </View>
 
-        <View style={{ gap: theme.spacing.lg }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: theme.spacing.xs }}>
-            {dots}
-          </View>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+        <View style={styles.stackLg}>
+          <View style={styles.dotsRow}>{dots}</View>
+          <View style={styles.actionsRow}>
             {step > 0 ? (
               <Button label="Back" variant="secondary" onPress={() => setStep((s) => s - 1)} />
             ) : (
               <Button label="Skip" variant="ghost" onPress={finish} />
             )}
-            <View style={{ flex: 1 }}>
+            <View style={styles.flex1}>
               {step < STEP_COUNT - 1 ? (
                 <Button label="Continue" fullWidth onPress={() => setStep((s) => s + 1)} />
               ) : (

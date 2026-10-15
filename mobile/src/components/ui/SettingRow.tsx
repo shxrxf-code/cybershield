@@ -1,5 +1,5 @@
-import React from 'react';
-import { Switch, View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, Switch, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme';
 import { AppText } from './Text';
 
@@ -24,10 +24,10 @@ export function SettingRow({
   style,
 }: SettingRowProps): React.JSX.Element {
   const theme = useTheme();
-  return (
-    <View
-      style={[
-        {
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
           flexDirection: 'row',
           alignItems: 'center',
           gap: theme.spacing.md,
@@ -35,11 +35,14 @@ export function SettingRow({
           paddingHorizontal: theme.spacing.lg,
           opacity: disabled ? 0.5 : 1,
         },
-        style,
-      ]}
-    >
+        text: { flex: 1, gap: 2 },
+      }),
+    [theme, disabled],
+  );
+  return (
+    <View style={[styles.root, style]}>
       {icon ? <View>{icon}</View> : null}
-      <View style={{ flex: 1, gap: 2 }}>
+      <View style={styles.text}>
         <AppText variant="bodyStrong">{title}</AppText>
         {description ? (
           <AppText variant="caption" color="secondary">

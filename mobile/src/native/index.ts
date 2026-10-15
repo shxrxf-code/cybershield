@@ -4,3 +4,5 @@
  */
 
 export * from './FileScannerNative';
+export * from './NotificationMonitorNative';
+export * from './AppInspectionNative';

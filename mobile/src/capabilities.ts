@@ -33,7 +33,7 @@ export interface Capabilities {
 export const capabilities: Capabilities = {
   deviceScan: false,     // Full-device enumeration not implemented yet
   fileScan: true,        // On-device FileScanner engine (SAF + SHA-256 + signatures)
-  appScan: false,        // Not yet implemented
+  appScan: true,         // AppInspection engine (PackageManager + permission analysis)
   notificationListener: true, // Android NotificationListenerService + on-device scam analyser
   urlReputation: true,   // Backend reputation API is available
 };

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme';
 import {
   Button,
@@ -29,6 +29,14 @@ export function SettingsScreen(): React.JSX.Element {
 
   const themeChoice: ColorScheme | 'system' = settings.colorScheme ?? 'system';
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        appearanceRow: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
+      }),
+    [theme],
+  );
+
   return (
     <Screen scroll edges={['left', 'right']}>
       <View style={{ gap: theme.spacing.xl }}>
@@ -36,7 +44,7 @@ export function SettingsScreen(): React.JSX.Element {
         <View>
           <SectionHeader title="Appearance" />
           <Card>
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+            <View style={styles.appearanceRow}>
               {THEME_OPTIONS.map((option) => (
                 <Chip
                   key={option.id}

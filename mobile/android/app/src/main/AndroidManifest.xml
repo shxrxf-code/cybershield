@@ -1,6 +1,35 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
+      App inspection needs to enumerate installed packages. On Android 11+ this requires
+      a <queries> declaration to see apps beyond the ones that match implicit intents.
+      We declare intent filters for common app categories so the inspection can see
+      most user-installed applications without needing QUERY_ALL_PACKAGES.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+    </queries>
+
+    <!--
       File scanning goes through the Storage Access Framework: the user picks
       exactly which documents to share, so no runtime storage permission is
       required. INTERNET is only used for the optional hash reputation lookup.

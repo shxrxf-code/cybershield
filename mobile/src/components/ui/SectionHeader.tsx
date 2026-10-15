@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme';
 import { AppText } from './Text';
 
@@ -13,20 +13,23 @@ export interface SectionHeaderProps {
 
 export function SectionHeader({ title, subtitle, action, style }: SectionHeaderProps): React.JSX.Element {
   const theme = useTheme();
-  return (
-    <View
-      style={[
-        {
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
           flexDirection: 'row',
           alignItems: 'flex-end',
           justifyContent: 'space-between',
           gap: theme.spacing.md,
           marginBottom: theme.spacing.md,
         },
-        style,
-      ]}
-    >
-      <View style={{ flex: 1, gap: theme.spacing.xxs }}>
+        text: { flex: 1, gap: theme.spacing.xxs },
+      }),
+    [theme],
+  );
+  return (
+    <View style={[styles.root, style]}>
+      <View style={styles.text}>
         <AppText variant="subheading">{title}</AppText>
         {subtitle ? (
           <AppText variant="caption" color="secondary">

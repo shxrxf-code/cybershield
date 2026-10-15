@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Share, View } from 'react-native';
+import { Share, StyleSheet, View } from 'react-native';
 import { useTheme } from '../theme';
 import {
   AppText,
@@ -52,6 +52,40 @@ export function ReportScreen(): React.JSX.Element {
   const lastScan = records[0];
   const generatedAt = new Date().toISOString();
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: { gap: theme.spacing.xl },
+        protectCard: { gap: theme.spacing.md },
+        protectHeader: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+        flexFill: { flex: 1 },
+        overviewRow: { flexDirection: 'row', gap: theme.spacing.md },
+        severityList: { gap: theme.spacing.md },
+        findingRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.md,
+          paddingVertical: theme.spacing.md,
+          paddingHorizontal: theme.spacing.lg,
+        },
+        dot: { width: 10, height: 10, borderRadius: 5 },
+        dotSafe: { backgroundColor: theme.colors.safe },
+        dotSuspicious: { backgroundColor: theme.colors.suspicious },
+        dotMalicious: { backgroundColor: theme.colors.malicious },
+        dotUnknown: { backgroundColor: theme.colors.unknown },
+        findingBody: { flex: 1, gap: 2 },
+        actions: { gap: theme.spacing.md },
+      }),
+    [theme],
+  );
+
+  const dotStyles = {
+    safe: styles.dotSafe,
+    suspicious: styles.dotSuspicious,
+    malicious: styles.dotMalicious,
+    unknown: styles.dotUnknown,
+  };
+
   const buildSummary = (): string => {
     const lines = [
       `${APP_NAME} security report (v${APP_VERSION})`,
@@ -75,16 +109,16 @@ export function ReportScreen(): React.JSX.Element {
 
   return (
     <Screen scroll edges={['left', 'right']}>
-      <View style={{ gap: theme.spacing.xl }}>
+      <View style={styles.content}>
         <Card tone={protectedNow ? 'safe' : 'suspicious'}>
-          <View style={{ gap: theme.spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <View style={styles.protectCard}>
+            <View style={styles.protectHeader}>
               {protectedNow ? (
                 <ShieldCheck size={24} color={theme.colors.safe} />
               ) : (
                 <ShieldAlert size={24} color={theme.colors.suspicious} />
               )}
-              <AppText variant="heading" style={{ flex: 1 }}>
+              <AppText variant="heading" style={styles.flexFill}>
                 {protectedNow ? 'Protection is active' : 'Protection is limited'}
               </AppText>
             </View>
@@ -98,7 +132,7 @@ export function ReportScreen(): React.JSX.Element {
 
         <View>
           <SectionHeader title="Overview" />
-          <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+          <View style={styles.overviewRow}>
             <StatTile label="Scans run" value={totals.totalScans} />
             <StatTile label="Threats found" value={totals.totalThreats} />
           </View>
@@ -116,7 +150,7 @@ export function ReportScreen(): React.JSX.Element {
             </Card>
           ) : (
             <Card>
-              <View style={{ gap: theme.spacing.md }}>
+              <View style={styles.severityList}>
                 {SEVERITIES.map((severity) => {
                   const count = alertsBySeverity[severity] ?? 0;
                   return (
@@ -147,23 +181,12 @@ export function ReportScreen(): React.JSX.Element {
                 <View key={alert.id}>
                   {index > 0 ? <Divider /> : null}
                   <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: theme.spacing.md,
-                      paddingVertical: theme.spacing.md,
-                      paddingHorizontal: theme.spacing.lg,
-                    }}
+                    style={styles.findingRow}
                   >
                     <View
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        backgroundColor: theme.colors[toneDotRole(severityTone(alert.severity))],
-                      }}
+                      style={[styles.dot, dotStyles[toneDotRole(severityTone(alert.severity))]]}
                     />
-                    <View style={{ flex: 1, gap: 2 }}>
+                    <View style={styles.findingBody}>
                       <AppText variant="bodyStrong" numberOfLines={1}>
                         {threatTypeLabel(alert.threatType)}
                       </AppText>
@@ -181,7 +204,7 @@ export function ReportScreen(): React.JSX.Element {
           )}
         </View>
 
-        <View style={{ gap: theme.spacing.md }}>
+        <View style={styles.actions}>
           <Button
             label="Share report"
             variant="secondary"

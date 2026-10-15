@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme';
 import { AppText } from './Text';
 
@@ -11,24 +11,27 @@ export interface DividerProps {
 
 export function Divider({ label, style }: DividerProps): React.JSX.Element {
   const theme = useTheme();
-  const line: ViewStyle = { height: 1, flex: 1, backgroundColor: theme.colors.border };
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        line: { height: 1, flex: 1, backgroundColor: theme.colors.border },
+        plain: { height: 1, backgroundColor: theme.colors.border },
+        row: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
+      }),
+    [theme],
+  );
 
   if (!label) {
-    return <View style={[{ height: 1, backgroundColor: theme.colors.border }, style]} />;
+    return <View style={[styles.plain, style]} />;
   }
 
   return (
-    <View
-      style={[
-        { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
-        style,
-      ]}
-    >
-      <View style={line} />
+    <View style={styles.row}>
+      <View style={styles.line} />
       <AppText variant="caption" color="tertiary">
         {label}
       </AppText>
-      <View style={line} />
+      <View style={styles.line} />
     </View>
   );
 }

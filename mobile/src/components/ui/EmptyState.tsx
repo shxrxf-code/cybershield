@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../theme';
 import { AppText } from './Text';
 
@@ -18,20 +18,24 @@ export interface EmptyStateProps {
  */
 export function EmptyState({ title, message, icon, action, style }: EmptyStateProps): React.JSX.Element {
   const theme = useTheme();
-  return (
-    <View
-      style={[
-        {
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
           alignItems: 'center',
           justifyContent: 'center',
           gap: theme.spacing.sm,
           paddingVertical: theme.spacing.xxxl,
           paddingHorizontal: theme.spacing.xl,
         },
-        style,
-      ]}
-    >
-      {icon ? <View style={{ marginBottom: theme.spacing.xs }}>{icon}</View> : null}
+        icon: { marginBottom: theme.spacing.xs },
+        action: { marginTop: theme.spacing.md },
+      }),
+    [theme],
+  );
+  return (
+    <View style={[styles.root, style]}>
+      {icon ? <View style={styles.icon}>{icon}</View> : null}
       <AppText variant="subheading" align="center">
         {title}
       </AppText>
@@ -40,7 +44,7 @@ export function EmptyState({ title, message, icon, action, style }: EmptyStatePr
           {message}
         </AppText>
       ) : null}
-      {action ? <View style={{ marginTop: theme.spacing.md }}>{action}</View> : null}
+      {action ? <View style={styles.action}>{action}</View> : null}
     </View>
   );
 }

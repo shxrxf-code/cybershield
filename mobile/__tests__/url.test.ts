@@ -66,6 +66,8 @@ describe('parseWebUrl', () => {
   });
 
   it('rejects a non-http(s) scheme', () => {
+    // The literal is exactly the risky input we must reject — not an eval.
+    // eslint-disable-next-line no-script-url
     const result = parseWebUrl('javascript:alert(1)');
     expect(result.ok).toBe(false);
     expect(result.reason).toMatch(/only http and https/i);

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import {
@@ -24,6 +24,22 @@ import type { RootStackParamList } from '../navigation/types';
 /** Full detail for one scan record, read from the scan store. */
 export function ScanDetailScreen(): React.JSX.Element {
   const theme = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: { gap: theme.spacing.xl },
+        card: { gap: theme.spacing.md },
+        titleRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+        flexFill: { flex: 1 },
+        badgeRow: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
+        detail: { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm },
+        noteRow: { flexDirection: 'row', gap: theme.spacing.md },
+        actions: { gap: theme.spacing.md },
+      }),
+    [theme],
+  );
+
   const navigation = useRootNavigation();
   const route = useRoute<RouteProp<RootStackParamList, 'ScanDetail'>>();
   const { scanId } = route.params;
@@ -49,20 +65,20 @@ export function ScanDetailScreen(): React.JSX.Element {
 
   return (
     <Screen scroll edges={['left', 'right']}>
-      <View style={{ gap: theme.spacing.xl }}>
+      <View style={styles.content}>
         <Card tone={clean ? 'safe' : tone}>
-          <View style={{ gap: theme.spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <View style={styles.card}>
+            <View style={styles.titleRow}>
               {clean ? (
                 <CircleCheck size={24} color={theme.colors.safe} />
               ) : (
                 <TriangleAlert size={24} color={theme.colors[tone]} />
               )}
-              <AppText variant="heading" style={{ flex: 1 }}>
+              <AppText variant="heading" style={styles.flexFill}>
                 {clean ? 'No threats found' : `${scan.threatsFound} ${scan.threatsFound === 1 ? 'threat' : 'threats'} found`}
               </AppText>
             </View>
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
+            <View style={styles.badgeRow}>
               <Badge label={scanTypeLabel(scan.scanType)} tone="info" />
               <Badge label={statusLabel(scan.threatLevel)} tone={tone} />
               <Badge label={scan.scanStatus} tone={scan.scanStatus === 'completed' ? 'safe' : 'unknown'} />
@@ -73,7 +89,7 @@ export function ScanDetailScreen(): React.JSX.Element {
         <View>
           <SectionHeader title="Details" />
           <Card flush>
-            <View style={{ paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }}>
+            <View style={styles.detail}>
               {scan.target ? <KeyValue label="Target" value={scan.target} mono selectable /> : null}
               {scan.fileName ? <KeyValue label="File name" value={scan.fileName} selectable /> : null}
               {scan.fileHash ? <KeyValue label="SHA-256" value={scan.fileHash} mono selectable /> : null}
@@ -104,15 +120,15 @@ export function ScanDetailScreen(): React.JSX.Element {
         )}
 
         <Card>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+          <View style={styles.noteRow}>
             <ScanLine size={20} color={theme.colors.textSecondary} />
-            <AppText variant="caption" color="secondary" style={{ flex: 1 }}>
+            <AppText variant="caption" color="secondary" style={styles.flexFill}>
               This record is stored on your device as part of your scan history.
             </AppText>
           </View>
         </Card>
 
-        <View style={{ gap: theme.spacing.md }}>
+        <View style={styles.actions}>
           <Divider />
           <Button
             label="Remove from history"

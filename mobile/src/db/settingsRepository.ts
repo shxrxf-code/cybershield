@@ -23,6 +23,8 @@ export interface SettingsShape {
   notificationMonitoring: boolean;
   backgroundProtection: boolean;
   alertNotifications: boolean;
+  /** Packages the user asked us not to analyse. */
+  notificationIgnoredPackages: string[];
 
   // Privacy preferences
   privacyPreferences: {
@@ -47,6 +49,7 @@ export const DEFAULT_SETTINGS: SettingsShape = {
   notificationMonitoring: false,
   backgroundProtection: false,
   alertNotifications: true,
+  notificationIgnoredPackages: [],
   privacyPreferences: {
     analytics: false,
     crashReporting: false,
