@@ -286,3 +286,4 @@ migration, references no project code, and was removed; the tracked root
 | Prebuild wiping native code | Prebuild is never run against the real tree; config plugin verified on a sandbox copy. |
 | No physical device attached to the dev machine | Debug APK is built locally; on-device verification is performed with `adb install` on a connected device and recorded as a separate checklist. |
 | No Expo SDK for RN 0.87 | Resolved by moving to SDK 58 / RN 0.88.0 (see §3). |
+| Release builds are signed with the debug keystore | **Pre-existing, carried over unchanged.** `android/app/build.gradle` still does `release { signingConfig signingConfigs.debug }`, exactly as the upstream RN template ships it (with the template's own "generate your own keystore" warning). The migration neither introduced nor resolved this; a production keystore must be configured before any store submission. |
