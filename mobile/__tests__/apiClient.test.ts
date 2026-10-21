@@ -18,7 +18,7 @@ const fetchMock = jest.fn();
 
 beforeEach(() => {
   fetchMock.mockReset();
-  (global as unknown as { fetch: jest.Mock }).fetch = fetchMock;
+  (globalThis as unknown as { fetch: jest.Mock }).fetch = fetchMock;
 });
 
 function jsonResponse(body: unknown, status = 200): Response {

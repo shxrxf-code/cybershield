@@ -22,7 +22,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "migrate": "tsx src/database/migrate-cli.ts",
-    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "gen:key": "node scripts/gen-key.js"
   },
   "dependencies": {
     "cors": "^2.8.6",

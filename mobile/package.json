@@ -10,7 +10,8 @@
     "prebuild": "expo prebuild",
     "lint": "eslint .",
     "test": "jest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json}\""
   },
   "dependencies": {
     "@op-engineering/op-sqlite": "^18.2.5",
@@ -29,13 +30,9 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
-    "@react-native/babel-preset": "0.88.0",
     "@react-native/eslint-config": "0.88.0",
     "@react-native/jest-preset": "0.88.0",
-    "@react-native/metro-config": "0.88.0",
-    "@react-native/typescript-config": "0.88.0",
     "@types/jest": "^29.5.13",
     "@types/react": "^19.2.0",
     "@types/react-test-renderer": "^19.1.0",
