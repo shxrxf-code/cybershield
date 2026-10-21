@@ -11,10 +11,15 @@ on a **physical Android device** before the feature is considered done.
 # 1. Toolchain (JAVA_HOME + ANDROID_HOME for this machine)
 source scripts/dev-env.sh
 
-# 2. Build the debug APK
-cd mobile/android
-./gradlew :app:assembleDebug
+# 2. Build and install the development build.
+#    The app has custom native modules, so it CANNOT run in Expo Go:
+#    `npx expo run:android` builds a development build that contains them.
+cd mobile
+npx expo run:android
 cd -
+
+# 2b. To build the APK without installing it:
+cd mobile/android && ./gradlew :app:assembleDebug && cd -
 
 # 3. Install on the connected device
 adb install -r mobile/android/app/build/outputs/apk/debug/app-debug.apk
@@ -40,7 +45,7 @@ port so a physical device can reach it:
 ```bash
 source scripts/dev-env.sh
 npm run backend:dev                 # terminal 1
-adb reverse tcp:3000 tcp:3000       # terminal 2
+adb reverse tcp:8000 tcp:8000       # terminal 2
 ```
 
 In the app, enable **Settings → Privacy → Share threat data**, or use the toggle
