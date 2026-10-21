@@ -59,7 +59,12 @@ download() {
   local out="$CACHE/$name"
   local resolved attempt=1
 
-  resolved="$(curl -sS -o /dev/null -L --max-time 120 -w '%{url_effective}' "$url" 2>/dev/null)"
+  # Resolve the URL to its final destination with a one-byte range request:
+  # a plain GET would stream the entire file to /dev/null, and curl drops the
+  # Range header while following a redirect, so a resumed transfer would
+  # restart from zero instead of continuing.
+  resolved="$(curl -sS -L -r 0-0 -o /dev/null --connect-timeout 30 --max-time 60 \
+              -w '%{url_effective}' "$url" 2>/dev/null)"
   [ -n "$resolved" ] || resolved="$url"
 
   while [ "$attempt" -le 40 ]; do
