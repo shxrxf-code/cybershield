@@ -86,22 +86,30 @@ download() {
   return 1
 }
 
-# install_package <sdk-relative-dir> <archive>
+# install_package <sdk-relative-target-dir> <archive> <top-level-dir-in-archive>
+#
+# The archives do not use the package directory names: both
+# platform-37.0_r02.zip and build-tools_r37_linux.zip contain a top-level
+# "android-37.0/" directory, and the NDK archive contains "android-ndk-r27b/".
+# The target directory and the archive's top-level name are therefore both
+# given explicitly.
 install_package() {
-  local dir="$1" archive="$2"
-  [ -d "$ANDROID_HOME/$dir" ] && { info "$dir: already installed"; return 0; }
-  info "$dir: unpacking $(basename "$archive")"
-  rm -rf "$ANDROID_HOME/$dir"
-  unzip -q "$CACHE/$archive" -d "$ANDROID_HOME/.tmp-unpack" \
-    || { printf 'ERROR: failed to unpack %s\n' "$archive" >&2; return 1; }
-  # The archives contain a single top-level directory named after the package
-  # (e.g. "platform-tools/", "android-14/", "android-ndk-r27b/").
-  local top
-  top="$(find "$ANDROID_HOME/.tmp-unpack" -mindepth 1 -maxdepth 1 -type d | head -1)"
-  if [ -n "$top" ]; then
-    mv "$top" "$ANDROID_HOME/$dir"
+  local dir="$1" archive="$2" top="$3"
+  if [ -d "$ANDROID_HOME/$dir" ] && [ -n "$(ls -A "$ANDROID_HOME/$dir" 2>/dev/null)" ]; then
+    info "$dir: already installed"
+    return 0
   fi
-  rm -rf "$ANDROID_HOME/.tmp-unpack"
+  info "$dir: unpacking $(basename "$archive")"
+  local staging="$ANDROID_HOME/.tmp-unpack-$$"
+  rm -rf "$staging"; mkdir -p "$staging"
+  unzip -q "$CACHE/$archive" -d "$staging" || {
+    printf 'ERROR: failed to unpack %s\n' "$archive" >&2
+    rm -rf "$staging"; return 1
+  }
+  rm -rf "$ANDROID_HOME/$dir"
+  mkdir -p "$(dirname "$ANDROID_HOME/$dir")"
+  mv "$staging/$top" "$ANDROID_HOME/$dir"
+  rm -rf "$staging"
   info "$dir: installed"
 }
 
@@ -131,11 +139,11 @@ fi
 
 if [ "$DO_INSTALL" -eq 1 ]; then
   log "Installing into $ANDROID_HOME"
-  install_package "platform-tools"        "platform-tools_r37.0.1-linux.zip"
-  install_package "platforms/android-37.0" "platform-37.0_r02.zip"
-  install_package "build-tools/37.0.0"    "build-tools_r37_linux.zip"
-  install_package "ndk/27.1.12297006"     "android-ndk-r27b-linux.zip"
-  install_package "cmake/4.1.2"           "cmake-4.1.2-linux.zip"
+  install_package "platform-tools"         "platform-tools_r37.0.1-linux.zip" "platform-tools"
+  install_package "platforms/android-37.0"  "platform-37.0_r02.zip"         "android-37.0"
+  install_package "build-tools/37.0.0"     "build-tools_r37_linux.zip"      "android-37.0"
+  install_package "ndk/27.1.12297006"      "android-ndk-r27b-linux.zip"     "android-ndk-r27b"
+  install_package "cmake/4.1.2"            "cmake-4.1.2-linux.zip"          "cmake-4.1.2"
 fi
 
 log "Done"
