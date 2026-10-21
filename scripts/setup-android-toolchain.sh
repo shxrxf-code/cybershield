@@ -23,10 +23,16 @@ ANDROID_SDK="${ANDROID_SDK:-$HOME/Android/Sdk}"
 CMDLINE_TOOLS_BUILD="${CMDLINE_TOOLS_BUILD:-9862592}"
 
 # Versions the Gradle build requires (android/build.gradle).
-PLATFORM="platforms;android-37"
-BUILD_TOOLS="build-tools;37.0.0"
-NDK="ndk;27.1.12297006"
-CMAKE="cmake;3.22.1"
+#
+# Note: compileSdkVersion = 37 is published as "platforms;android-37.0" —
+# Android 37 uses a minor-versioned platform id, so the bare "android-37"
+# package does not exist in Google's repository.
+PLATFORM="${PLATFORM:-platforms;android-37.0}"
+BUILD_TOOLS="${BUILD_TOOLS:-build-tools;37.0.0}"
+NDK="${NDK:-ndk;27.1.12297006}"
+# cmake_minimum_required in RN 0.88 / op-sqlite is only 3.13/3.9, so any modern
+# CMake works; 4.1.2 is the current stable in the SDK repository.
+CMAKE="${CMAKE:-cmake;4.1.2}"
 
 log() { printf '\n==> %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -86,13 +92,27 @@ yes | "$SDKMANAGER" --sdk_root="$ANDROID_SDK" --licenses >/dev/null || true
 log "Determining available packages"
 available="$("$SDKMANAGER" --sdk_root="$ANDROID_SDK" --list 2>/dev/null || true)"
 
+# sdkmanager prints installed packages under an "Installed packages:" heading,
+# so grepping the whole --list output would treat an uninstalled-but-listed
+# package as present. Check the parser on the repository section only, and
+# verify real on-disk presence for the platform/NDK/CMake directories.
 wanted=("$PLATFORM" "$BUILD_TOOLS" "$NDK" "$CMAKE")
 missing=()
 for pkg in "${wanted[@]}"; do
-  if printf '%s' "$available" | grep -qF "$pkg"; then
-    printf '  present : %s\n' "$pkg"
+  case "$pkg" in
+    platforms\;*)  dir="$ANDROID_SDK/platforms/${pkg#platforms;}" ;;
+    build-tools\;*) dir="$ANDROID_SDK/build-tools/${pkg#build-tools;}" ;;
+    ndk\;*)        dir="$ANDROID_SDK/ndk/${pkg#ndk;}" ;;
+    cmake\;*)      dir="$ANDROID_SDK/cmake/${pkg#cmake;}" ;;
+    *)            dir="" ;;
+  esac
+  if [ -n "$dir" ] && [ -d "$dir" ]; then
+    printf '  present : %s (%s)\n' "$pkg" "$dir"
+  elif printf '%s' "$available" | grep -qF "$pkg"; then
+    printf '  to install : %s\n' "$pkg"
+    missing+=("$pkg")
   else
-    printf '  missing : %s\n' "$pkg"
+    printf '  missing : %s (not offered by the repository)\n' "$pkg"
     missing+=("$pkg")
   fi
 done
