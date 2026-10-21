@@ -72,6 +72,13 @@ expo-env.d.ts
 # testing
 /coverage
 
+# Local developer configuration
+#
+# src/api/local-config.ts holds the dev API key for the local backend. It is
+# created by copying src/api/local-config.example.ts and must never be
+# committed. The example file IS tracked.
+src/api/local-config.ts
+
 # Yarn
 .yarn/*
 !.yarn/patches

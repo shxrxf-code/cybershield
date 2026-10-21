@@ -1,6 +1,9 @@
 /**
  * API configuration. The dev values point at a local backend (reachable via
- * `adb reverse tcp:3000 tcp:3000` when the emulator/device is attached).
+ * `adb reverse tcp:8000 tcp:8000` when the emulator/device is attached).
+ *
+ * The port must match the backend's `PORT` (default 8000, see
+ * `backend/src/config/env.ts`).
  *
  * In a production build the `DEFAULT_API_KEY` would be injected at build time
  * (e.g. via `process.env` in Metro or a Gradle `resValue`). It is intentionally
@@ -10,9 +13,9 @@
 
 // Local dev backend URL. When the app runs on an Android emulator, `10.0.2.2`
 // reaches the host machine. On a physical device you must run `adb reverse
-// tcp:3000 tcp:3000` and keep the default.
+// tcp:8000 tcp:8000` and keep the default.
 export const API_BASE_URL = __DEV__
-  ? 'http://10.0.2.2:3000'
+  ? 'http://10.0.2.2:8000'
   : 'https://api.threatguard.example'; // replace with real prod endpoint
 
 /**
