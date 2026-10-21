@@ -213,6 +213,8 @@ in the generated project:
 * the notification-listener service with `BIND_NOTIFICATION_LISTENER_SERVICE`;
 * the op-sqlite `debug` build-type patch in `build.gradle`;
 * the dark splash (`#070C16`) with the logo drawable intact;
+* the `threatguard` deep-link intent filter on `MainActivity` (Android) and
+  `CFBundleURLSchemes=threatguard` (iOS) — the expo-dev-client scheme;
 * `getMainComponentName() = "main"` and `applicationId com.threatguard.mobile`;
 * Expo autolinking (`expoAutolinking.useExpoModules`, `useExpoVersionCatalog`)
   resolving `expo-dev-client`, `expo-dev-launcher`, `expo-dev-menu`,
@@ -228,6 +230,43 @@ The exercise caught two defects that would otherwise have shipped silently:
    `#FFFFFF`; SDK 58 ships splash handling inside `expo` (there is no
    `expo-splash-screen` config plugin in this project). Fixed by overriding the
    colour and asserting the final value, so template drift fails loudly.
+
+## 7b. Stage 2 results
+
+Focus: getting the dev client actually running and the native build off the
+ground.
+
+| Check | Result |
+| --- | --- |
+| `npx expo start --dev-client` | Metro serves at `http://localhost:8081` (`packager-status:running`) |
+| shared URI scheme warning | **gone** after the fixes below (was present on first start) |
+| `npx tsc --noEmit` | **0 errors** (re-run after every change) |
+| `npx jest` | **113/113 pass**, 9 suites (re-run after every change) |
+| `npx expo prebuild` (sandbox, android + ios) | exit 0; all customizations + the scheme survive |
+
+### Defects found and fixed in Stage 2
+
+1. **No shared URI scheme.** The dev client start-up warned that the QR code /
+   interstitial / terminal launch keys may not work. The scheme must be in
+   **both** native projects — `expo start` intersects the iOS and Android scheme
+   lists (`getOptionalDevClientSchemeAsync` → `intersecting(ios, android)`), and
+   the Android half is only read from `singleTask` activities (which
+   `MainActivity` is). Added `threatguard` to `app.json`, the Android intent
+   filter, the iOS `Info.plist`, and the config plugin. Verified both extractors
+   now return `["threatguard"]`.
+2. **CRITICAL — malformed XML comment.** The comment accompanying the Android
+   scheme filter contained the sequence `--dev-client`. A double hyphen is
+   illegal inside an XML comment, which made **`AndroidManifest.xml`
+   unparseable** — not just for Metro, but for `expo prebuild` and the Android
+   build toolchain (`android:launchMode` was reported as `undefined`). Reworded
+   and swept the file for other illegal sequences.
+3. **Toolchain script could not install the SDK.**
+   `scripts/setup-android-toolchain.sh` requested `platforms;android-37`, but
+   Android 37 is published as `platforms;android-37.0`; it also detected
+   "already installed" by grepping the whole `sdkmanager --list` output, which
+   includes the *Installed packages* section, so nothing was ever installed.
+   Both fixed; CMake now tracks the current stable (`4.1.2`), which satisfies
+   the `cmake_minimum_required` of RN 0.88 and op-sqlite (3.13 / 3.9).
 
 ### Environment note
 
