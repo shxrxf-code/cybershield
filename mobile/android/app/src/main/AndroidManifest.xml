@@ -64,8 +64,8 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
-        <!-- Deep link scheme used by expo-dev-client: lets `expo start
-             --dev-client` open this build via threatguard:// and lets the dev
+        <!-- Deep link scheme used by the expo dev client: lets the dev client
+             start command open this build via threatguard:// and lets the dev
              launcher hand the project URL back to the app. -->
         <intent-filter>
             <action android:name="android.intent.action.VIEW" />

@@ -20,6 +20,8 @@
  *      (the library ships a `release` build type only).
  *   4. res/values styles/colors provide the dark splash screen theme
  *      (Theme.App.SplashScreen, background #070C16).
+ *   5. ios/Info.plist declares CFBundleURLSchemes=threatguard, the iOS half of
+ *      the expo-dev-client deep-link scheme (the Android half is in item 2).
  *
  * Every step is idempotent: running prebuild twice, or running the plugin
  * against a tree that already contains the changes, is a no-op.
@@ -31,6 +33,7 @@ const path = require('path');
 const {
   withAndroidManifest,
   withDangerousMod,
+  withInfoPlist,
   createRunOncePlugin,
 } = require('@expo/config-plugins');
 
@@ -357,6 +360,28 @@ const withThreatGuardSplash = (config) =>
   ]);
 
 // ---------------------------------------------------------------------------
+// 5. ios/Info.plist — CFBundleURLSchemes for expo-dev-client
+// ---------------------------------------------------------------------------
+//
+// `expo start --dev-client` only advertises the dev-client launcher URI when the
+// scheme is present in *both* native projects. The Android intent filter is
+// asserted above; this keeps the iOS half in step so the checked-in ios/ tree
+// does not warn at start-up. app.json's `scheme` produces this on prebuild too.
+const withThreatGuardIosScheme = (config) =>
+  withInfoPlist(config, (cfg) => {
+    const SCHEME = 'threatguard';
+    const urlTypes = cfg.modResults.CFBundleURLTypes ?? [];
+    const declared = urlTypes.some((t) =>
+      (t.CFBundleURLSchemes ?? []).includes(SCHEME)
+    );
+    if (!declared) {
+      urlTypes.push({ CFBundleURLSchemes: [SCHEME] });
+    }
+    cfg.modResults.CFBundleURLTypes = urlTypes;
+    return cfg;
+  });
+
+// ---------------------------------------------------------------------------
 
 const pkg = require('../package.json');
 
@@ -371,5 +396,6 @@ function withThreatGuardNative(config) {
   config = withThreatGuardManifest(config);
   config = withOpSqliteDebugBuildType(config);
   config = withThreatGuardSplash(config);
+  config = withThreatGuardIosScheme(config);
   return config;
 }
