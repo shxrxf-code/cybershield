@@ -268,6 +268,42 @@ ground.
    Both fixed; CMake now tracks the current stable (`4.1.2`), which satisfies
    the `cmake_minimum_required` of RN 0.88 and op-sqlite (3.13 / 3.9).
 
+### Android SDK provisioning (network stalls)
+
+The fixed package ids revealed a second, environmental problem: **long HTTPS
+reads to `dl.google.com` stall without ever timing out.** `sdkmanager` sat at
+30% of the NDK for 23 minutes and the Gradle wrapper died with an SSL
+`Connection reset` after ~50 MiB. The transfer never failed from the server's
+point of view, so no client-side timeout ever fired.
+
+Worked around with `scripts/download-sdk-packages.sh`, which uses:
+
+* `--speed-time 120 --speed-limit 1024` — abort a transfer that stops making
+  progress (this is what `sdkmanager` and the wrapper both lack);
+* `--retry 5 --retry-all-errors` — ride out transient network errors;
+* `-C -` — resume the partial file instead of restarting it;
+* URL resolution up front — `curl` drops the `Range` header when it follows a
+  redirect, so a resumed transfer against the Gradle CDN restarted from zero
+  until the final URL was resolved first.
+
+The link is not bandwidth-capped per connection (~300 KiB/s each, ~950 KiB/s
+aggregate), so the five packages download in parallel.
+
+Two further details the script encodes:
+
+* the archives do **not** use the package directory names — both
+  `platform-37.0_r02.zip` and `build-tools_r37_linux.zip` contain a top-level
+  `android-37.0/`, and the NDK archive contains `android-ndk-r27b/` — so the
+  target directory and the archive's top-level name are both explicit;
+* a stalled `sdkmanager` run leaves a **directory that exists but is empty**
+  (`build-tools/37.0.0/` containing only `.installer/.installData`). Presence
+  checks must count files, not just test `-d`, or a half-installed package
+  looks installed.
+
+The script also reproduces the Gradle wrapper's cache layout (zip + `.ok`
+marker + extracted directory) so `./gradlew` uses the locally fetched
+distribution instead of trying to download it again.
+
 ### Environment note
 
 An unrelated stray Expo scaffold had been created in the **monorepo root**
