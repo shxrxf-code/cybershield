@@ -222,6 +222,30 @@ const withThreatGuardManifest = (config) =>
       application.service.push(NOTIFICATION_MONITOR_SERVICE);
     }
 
+    // 2d. Deep-link scheme for expo-dev-client (threatguard://). Expo generates
+    // this from app.json's `scheme`, but the project is bare-first, so it is
+    // asserted here as well to keep the checked-in and regenerated projects in
+    // step.
+    const mainActivity = (application.activity ?? []).find(
+      (a) => a.$ && a.$['android:name'] === '.MainActivity'
+    );
+    if (mainActivity) {
+      mainActivity['intent-filter'] = mainActivity['intent-filter'] ?? [];
+      const hasScheme = mainActivity['intent-filter'].some((f) =>
+        (f.data ?? []).some((d) => d.$ && d.$['android:scheme'] === 'threatguard')
+      );
+      if (!hasScheme) {
+        mainActivity['intent-filter'].push({
+          action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
+          category: [
+            { $: { 'android:name': 'android.intent.category.DEFAULT' } },
+            { $: { 'android:name': 'android.intent.category.BROWSABLE' } },
+          ],
+          data: [{ $: { 'android:scheme': 'threatguard' } }],
+        });
+      }
+    }
+
     return cfg;
   });
 
