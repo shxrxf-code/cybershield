@@ -187,6 +187,57 @@ reproduced them byte-for-byte.
 | 1 | Expo native integration in `android/` (autolinking glue, `MainActivity`/`MainApplication`, splash, `app.json`, `eas.json`, config plugin) | `npx expo-doctor`, `./gradlew assembleDebug` |
 | 2 | Verification: dev build, SQLite, native modules registered, prebuild-fidelity diff | build log + report |
 
+## 7a. Stage 1 results
+
+Executed and verified:
+
+| Check | Result |
+| --- | --- |
+| `npm install` | 947 packages; resolved `expo 58.0.16`, `react-native 0.88.0`, `react 19.3.0` |
+| `npx tsc --noEmit` | **0 errors** (198 test-globals errors were fixed by setting `compilerOptions.types` in `tsconfig.json`) |
+| `npx jest` | **113/113 tests pass**, 9 suites, including the App render test under `babel-preset-expo` |
+| `npx expo-doctor` | **19/20**. The single remaining check is informational: it flags that `app.json` native fields are not synced because `android/` is committed — the intended bare-first design. |
+
+### Config-plugin fidelity (proven, not assumed)
+
+`npx expo prebuild --platform android --no-install` was run against a
+**throw-away copy** of the project (the real `android/` is never regenerated),
+and the output was diffed against the hand-maintained project. Verified present
+in the generated project:
+
+* all three native package registrations in `MainApplication.kt`
+  (`FileScannerPackage`, `NotificationMonitorPackage`, `AppInspectionPackage`);
+* `POST_NOTIFICATIONS`;
+* **all five** `<queries>` intents (MAIN/LAUNCHER, VIEW/https, SEND/text-plain,
+  SENDTO/mailto, DIAL);
+* the notification-listener service with `BIND_NOTIFICATION_LISTENER_SERVICE`;
+* the op-sqlite `debug` build-type patch in `build.gradle`;
+* the dark splash (`#070C16`) with the logo drawable intact;
+* `getMainComponentName() = "main"` and `applicationId com.threatguard.mobile`;
+* Expo autolinking (`expoAutolinking.useExpoModules`, `useExpoVersionCatalog`)
+  resolving `expo-dev-client`, `expo-dev-launcher`, `expo-dev-menu`,
+  `expo-modules-core`.
+
+The exercise caught two defects that would otherwise have shipped silently:
+
+1. **`<queries>` was dropped.** Prebuild emits its own `<queries>` (one
+   VIEW/https intent), so an "add only if absent" guard skipped ThreatGuard's
+   block entirely — package enumeration would have broken at runtime on any
+   prebuild. Fixed by merging intents.
+2. **The splash reverted to white.** Expo's splash generation hard-codes
+   `#FFFFFF`; SDK 58 ships splash handling inside `expo` (there is no
+   `expo-splash-screen` config plugin in this project). Fixed by overriding the
+   colour and asserting the final value, so template drift fails loudly.
+
+### Environment note
+
+An unrelated stray Expo scaffold had been created in the **monorepo root**
+(adding `expo`/`react-native` to the root manifest plus a root `android/`,
+`app.json`, `tsconfig.json` and `node_modules`). It was not produced by this
+migration, references no project code, and was removed; the tracked root
+`package.json` and `package-lock.json` were restored unchanged.
+
+
 ## 8. Risks and mitigations
 
 | Risk | Mitigation |
