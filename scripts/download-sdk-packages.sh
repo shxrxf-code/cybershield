@@ -49,15 +49,23 @@ log()  { printf '\n==> %s\n' "$*"; }
 info() { printf '    %s\n' "$*"; }
 
 # download <file> <url> — resumable, stall-detecting, retried.
+#
+# The URL is resolved to its final destination first: when curl follows a
+# redirect it drops the Range header, so a resumed transfer would restart
+# from zero instead of continuing. Downloading the resolved URL keeps range
+# support (and therefore resuming) working.
 download() {
   local name="$1" url="$2" target="$3"
   local out="$CACHE/$name"
-  local attempt=1
+  local resolved attempt=1
+
+  resolved="$(curl -sS -o /dev/null -L --max-time 120 -w '%{url_effective}' "$url" 2>/dev/null)"
+  [ -n "$resolved" ] || resolved="$url"
 
   while [ "$attempt" -le 40 ]; do
     if curl -sS -L -C - --retry 5 --retry-delay 3 --retry-all-errors \
          --connect-timeout 30 --speed-time 120 --speed-limit 1024 \
-         -o "$out" "$url"; then
+         -o "$out" "$resolved"; then
       local size
       size="$(stat -c %s "$out" 2>/dev/null || echo 0)"
       if [ "$target" -gt 0 ] && [ "$size" -ne "$target" ]; then
