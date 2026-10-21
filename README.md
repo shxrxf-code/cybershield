@@ -20,35 +20,67 @@ without explicit user consent, and it never reports an unknown result as "safe".
 
 | Path | Contents |
 |------|----------|
-| `mobile/` | React Native CLI app (TypeScript). UI, navigation, state, local database, and the typed bridge to the native layer. |
-| `mobile/android/` | Kotlin native modules: notification listener, background workers, SAF/MediaStore access, hashing, package inspection. |
+| `mobile/` | **Expo** app (TypeScript, SDK 58 / React Native 0.88). UI, navigation, state, local database, and the typed bridge to the native layer. |
+| `mobile/android/` | Java/Kotlin native modules: notification listener, background workers, SAF/MediaStore access, hashing, package inspection. |
+| `mobile/plugins/` | Expo config plugin that re-applies the hand-written native customisations across `expo prebuild`. |
 | `backend/` | Node.js + Express + TypeScript REST API. Threat-intelligence aggregation, caching, rate limiting, persistence. |
-| `docs/` | Architecture, API reference, database schema, threat model, testing and the final-year project report. |
+| `docs/` | Architecture, migration, device testing and the roadmap. |
+| `scripts/` | Local toolchain helpers (Android SDK setup, downloader, dev environment). |
 
 ## Documentation
 
 - [Architecture](docs/architecture/README.md)
+- [Expo migration report](docs/migration/expo-migration-report.md)
 - [Roadmap & phase status](docs/roadmap.md)
-- [API reference](docs/api/README.md)
-- [Database schema](docs/database/README.md)
-- [Security & threat model](docs/security/README.md)
+- [Device test plan](docs/testing/device-test-plan.md)
 
 ## Getting started
 
-See [docs/development.md](docs/development.md) for the full environment setup,
-then:
+### Prerequisites
+
+The Android toolchain is not on the default `PATH` on a fresh machine. Install
+it once and then source the environment before any Gradle/adb/Expo command:
 
 ```bash
-# Backend (Node 20+)
+./scripts/setup-android-toolchain.sh
+source scripts/dev-env.sh
+```
+
+### Backend (Node 20+)
+
+```bash
 cd backend
 cp .env.example .env
 npm install
-npm run dev          # http://localhost:8000
+npm run gen:key            # prints an API key and its hash; add the hash to
+                           # API_KEY_HASHES in .env
+npm run dev                # http://localhost:8000
+```
 
-# Mobile (React Native CLI + JDK 17 + Android SDK)
+### Mobile (Expo, JDK 17 + Android SDK)
+
+```bash
 cd mobile
 npm install
-npm run android      # builds and installs on a connected device / emulator
+
+# Development build on a connected device or emulator.
+# This is required — the custom native modules (file scanner, notification
+# listener, app inspection) do NOT work in Expo Go.
+npx expo run:android
+```
+
+To run the dev server on its own (for an already-installed development build):
+
+```bash
+cd mobile
+npx expo start --dev-client
+```
+
+The app talks to the backend at `http://10.0.2.2:8000` in development (the
+emulator's alias for the host). On a physical device, forward the port instead:
+
+```bash
+adb reverse tcp:8000 tcp:8000
 ```
 
 ## Security posture (summary)

@@ -313,6 +313,123 @@ migration, references no project code, and was removed; the tracked root
 `package.json` and `package-lock.json` were restored unchanged.
 
 
+## 7c. Full repository inspection (Phases 1, 3, 4, 6, 7 audit)
+
+A second, independent pass over the whole repository — root, `backend/`,
+`mobile/`, `docs/`, `scripts/` — was carried out after the migration, to
+confirm the state of every area and to catch problems outside the Expo
+migration itself.
+
+### 1. Already migrated to Expo
+
+| Area | State |
+| --- | --- |
+| `mobile/package.json` | Expo SDK 58.0.16, `expo-dev-client` 58.0.14, RN 0.88.0, React 19.3.0, `babel-preset-expo` |
+| `mobile/app.json` | valid Expo config: `expo.scheme`, `expo.android.package`, `expo.ios.bundleIdentifier`, `expo.plugins` |
+| `mobile/eas.json` | `development` (dev client, apk) / `preview` (apk) / `production` (aab) profiles |
+| `mobile/babel.config.js` | `babel-preset-expo` only |
+| `mobile/metro.config.js` | `getDefaultConfig` from `expo/metro-config` |
+| `mobile/index.js` | `registerRootComponent(App)` — the Expo entry point |
+| `mobile/android/` | Expo autolinking (`expoAutolinking.useExpoModules`, `useExpoVersionCatalog`), `ExpoReactHostFactory`, `ReactActivityDelegateWrapper`, `getMainComponentName() = "main"` |
+| `mobile/plugins/withThreatGuardNative.js` | re-applies all four native customizations + the dev-client scheme |
+| `mobile/.expo/` | present (Expo state) |
+
+### 2. Remaining React Native CLI dependencies
+
+**None.** The `@react-native-community/cli*` packages were removed in Stage 1
+and no CLI-specific script remains. Four further dev dependencies were
+superseded by their Expo equivalents and removed in this phase:
+`@react-native/babel-preset`, `@react-native/metro-config`,
+`@react-native/typescript-config`, `@babel/preset-env`.
+
+Deliberately **kept**: `@react-native/eslint-config` (referenced by
+`.eslintrc.js`), `react-test-renderer` (used by `__tests__/App.test.tsx`).
+
+### 3. Unsupported Expo dependencies
+
+None found. Every Expo-managed package in the tree was installed with
+`expo install` and resolves to the SDK 58 compatible version. `npx expo-doctor`
+reports **19/20**; the single remaining check is informational — it warns that
+`app.json` native fields are not synced into the committed `android/`/`ios/`
+directories, which is the intended bare-first design, and the config plugin
+exists precisely to carry those values across a prebuild.
+
+### 4. Native Kotlin/Java modules — method-level contract check
+
+Every method named in the three TypeScript interfaces exists in the native
+implementation, and the constants match:
+
+| TS interface | Native source | Verified |
+| --- | --- | --- |
+| `src/native/FileScannerNative.ts` → `pickFile`, `computeFileHash`, `scanFile`, `cancelScan`, `clearCache`, `addListener`, `removeListeners` | `scanner/FileScannerModule.java` | all present |
+| constants `MAX_FILE_SIZE`, `MAX_CONTENT_SCAN_BYTES`, `SUPPORTED_MIME_TYPES`, `ENGINE_VERSION` | same (`getConstants`) | all present |
+| `src/native/AppInspectionNative.ts` → `inspectAllApps`, `inspectPackage`, `cancelInspection` | `appinspection/AppInspectionModule.kt` | all present |
+| `src/native/NotificationMonitorNative.ts` → `isAccessGranted`, `isConnected`, `openNotificationSettings`, `setMonitoringEnabled`, `isMonitoringEnabled`, `getIgnoredPackages`, `setIgnoredPackages`, `getSeenSources`, `clearSeenSources`, `hasNotificationPermission`, `postThreatAlert` | `notification/NotificationMonitorModule.kt` | all 11 present |
+
+Note: `FileScanner` is **Java**, not Kotlin (`scanner/FileScannerModule.java`,
+`scanner/FileScannerPackage.java`); the other two modules are Kotlin. The
+migration preserved both languages.
+
+### 5. Database compatibility
+
+* **Mobile** — `@op-engineering/op-sqlite` 18.2.5, unchanged. It is an
+  Expo-compatible library (it ships an Android prefab and is consumed through
+  the standard React Native autolinking path), so no replacement was
+  necessary. The existing `debug` build-type patch in `android/build.gradle`
+  is preserved, because the library publishes a `release` variant only.
+* **Schema** — `src/db/schema.ts` (`SCHEMA_VERSION = 1`) creates `scans`,
+  `alerts`, `settings` and 8 indexes plus 2 update triggers. Migrations are
+  applied by `src/db/service.ts` from the same `MIGRATIONS` array. **Nothing was
+  reset or deleted**; the existing `threatguard.db` and its rows are intact.
+* **Backend** — a separate database (`backend/src/database/`), untouched. It
+  uses Node's built-in `node:sqlite` for SQLite and `pg` for PostgreSQL behind
+  one `Database` interface, with a single inline migration `001_init`. The two
+  schemas are deliberately parallel but independent: `scan_history` ↔ `scans`,
+  `threat_alerts` ↔ `alerts`. The mobile app never writes to the backend
+  database.
+
+### 6. Duplicate configurations
+
+None inside `mobile/`. The root `package.json` is **not** an npm-workspaces
+root (it has no `workspaces` key and delegates with `npm --prefix`); its
+`package-lock.json` contains no dependencies, so it is a manifest pin rather
+than a duplicate lockfile.
+
+### 7. Broken or incomplete implementations
+
+These were found by this inspection and have been fixed, except where noted.
+
+| # | Finding | Status |
+| --- | --- | --- |
+| 1 | **The mobile API client and the backend did not agree on the wire format.** The client called `/api/v1/scan/url` and `/api/v1/scan/file` (the backend serves `/api/v1/scans/…`), sent `{ hash }` where the backend validates `sha256`, expected `GET /health` where the backend serves `GET /api/v1/health`, used port 3000 while the backend defaults to 8000, and expected a camelCase body where the backend emits snake_case. **Every reputation call from the app would have failed.** | **fixed** — the client now speaks the backend's contract and owns the snake_case → camelCase mapping; `__tests__/apiClient.test.ts` pins it |
+| 2 | `backend/.env.example` documents `npm run --silent gen:key`, but no such script existed. | **fixed** — `backend/scripts/gen-key.js` added |
+| 3 | `mobile/src/api/local-config.ts` (the file holding the dev API key) is documented as git-ignored, but no ignore rule matched it. | **fixed** — rule added to `mobile/.gitignore` |
+| 4 | `backend/.env.example` sets `INTEL_CACHE_TTL_SECONDS`, which the schema declares but no code reads (the real TTLs are constants in `utils/cache.ts`). | open — harmless, but it misleads an operator into thinking the value has an effect |
+| 5 | `pino-http` is a backend dependency that is never imported. | open — removal deferred so it is not mixed with functional changes |
+| 6 | `README.md` links to `docs/api/README.md`, `docs/database/README.md` and `docs/security/README.md`, none of which exist. | **fixed** — links updated to the documents that do exist |
+| 7 | Security Tools, Device Security Audit and `DeviceSecurityModule.kt` are named in the original brief but are **absent from the repository**. | not built — reported as missing, per instruction |
+
+### 8. Files that can be safely removed after verification
+
+Verified by checking the actual dependency graph and references, not by name:
+
+* `mobile/@react-native/babel-preset`, `@react-native/metro-config`,
+  `@react-native/typescript-config`, `@babel/preset-env` — removed (above).
+* `mobile/index.js` — **must be kept.** It is the Expo entry point
+  (`registerRootComponent`); removing it would break the app.
+* `mobile/react-native.config.js` — already absent.
+* `mobile/metro.config.js`, `mobile/babel.config.js` — **must be kept**, but
+  they are now Expo-managed rather than RN CLI ones. There is no duplicate
+  Babel/Metro configuration in the tree.
+* `mobile/android/` and `mobile/ios/` — **must be kept.** The Android project
+  carries the hand-written native modules, the manifest declarations and the
+  Gradle customisations.
+* `mobile/Gemfile`, `mobile/.watchmanconfig` — kept: the Gemfile is the
+  standard Expo/RN iOS dependency entry point, and `.watchmanconfig` is
+  still used by Metro on Linux.
+
+---
+
 ## 8. Risks and mitigations
 
 | Risk | Mitigation |

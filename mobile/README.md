@@ -1,97 +1,106 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Mobile ThreatGuard — mobile app
 
-# Getting Started
+The Android client of **Mobile ThreatGuard**: a privacy-first, permission-based
+security app that inspects URLs, files and the notification text Android
+actually exposes.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+The app is an **Expo** application (Expo SDK 58, React Native 0.88, React 19.3,
+TypeScript) built as a *bare* project: the `android/` directory is committed and
+is the source of truth, because the app ships hand-written native modules that
+a managed workflow cannot generate.
 
-## Step 1: Start Metro
+---
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Requirements
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+* Node 20+
+* JDK 17 and the Android SDK (see `../scripts/setup-android-toolchain.sh`)
+* An Android device or emulator running API 24+
 
-```sh
-# Using npm
-npm start
+On a machine where the toolchain is not on the default `PATH`:
 
-# OR using Yarn
-yarn start
+```bash
+source ../scripts/dev-env.sh
 ```
 
-## Step 2: Build and run your app
+## Running the app
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+This app uses **custom native modules** — a file scanner, a
+`NotificationListenerService` monitor and a `PackageManager` app inspector.
+They are compiled into the app, so **Expo Go cannot run it**; a development
+build is required.
 
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+```bash
+npm install
+npx expo run:android          # build, install and launch
 ```
 
-### iOS
+`npx expo run:android` builds the debug APK, installs it on the connected
+device or emulator and starts Metro. If the build is already installed and only
+the JavaScript needs reloading:
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+```bash
+npx expo start --dev-client
 ```
 
-Then, and every time you update your native dependencies, run:
+The dev client is reached over the `threatguard://` scheme.
 
-```sh
-bundle exec pod install
+## Backend
+
+In development the app calls the backend at `http://10.0.2.2:8000`
+(`10.0.2.2` is the emulator's alias for the host machine). For a physical
+device, forward the port:
+
+```bash
+adb reverse tcp:8000 tcp:8000
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+The backend API key is read from `src/api/local-config.ts` (git-ignored; copy
+`src/api/local-config.example.ts`) or from `THREATGUARD_API_KEY`. Generate a
+key with `npm run --silent gen:key` in `../backend`.
 
-```sh
-# Using npm
-npm run ios
+Third-party intelligence keys (Google Safe Browsing, URLhaus, VirusTotal) are
+**never** present in this app — they live only on the backend.
 
-# OR using Yarn
-yarn ios
-```
+## Scripts
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+| Script | Purpose |
+| --- | --- |
+| `npm start` | `expo start --dev-client` — Metro with the dev launcher |
+| `npm run android` | `expo run:android` — build, install and launch |
+| `npm run ios` | `expo run:ios` |
+| `npm run prebuild` | `expo prebuild` — regenerate the native projects |
+| `npm test` | Jest |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm run format` | Prettier |
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## Layout
 
-## Step 3: Modify your app
+| Path | Contents |
+| --- | --- |
+| `App.tsx` | Root component, providers, navigation host |
+| `src/screens/` | The 16 application screens |
+| `src/components/` | UI primitives and the theme-aware components |
+| `src/native/` | Typed interfaces for the three native modules |
+| `src/db/` | op-sqlite schema, migrations and repositories |
+| `src/api/` | Backend client and configuration |
+| `src/store/` | Zustand stores (scans, alerts, settings) |
+| `src/theme/` | Design tokens and the theme provider |
+| `android/app/src/main/java/` | The native modules (Java + Kotlin) |
+| `plugins/` | Expo config plugin preserving the native customisations |
 
-Now that you have successfully run the app, let's make changes!
+## Native customisations
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+Four things in `android/` are hand-written and would be lost by a
+`npx expo prebuild`. `plugins/withThreatGuardNative.js` re-applies all of them
+(and the dev-client deep-link scheme), so a regenerated project stays
+equivalent:
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+1. the three native package registrations in `MainApplication.kt`;
+2. the `AndroidManifest.xml` declarations — `POST_NOTIFICATIONS`, the Android
+   11+ `<queries>` block, and the notification-listener service;
+3. the op-sqlite `debug` build-type patch in `build.gradle`;
+4. the dark splash screen theme.
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+The plugin has been verified against a real `expo prebuild` of both platforms.
