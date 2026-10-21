@@ -1,0 +1,6 @@
+<resources>
+  <!-- Matches ThemeColors.background (slate-950) in src/theme/tokens.ts, so the
+       native splash screen flows straight into the app's dark background with no
+       colour flash on launch. -->
+  <color name="splashscreen_background">#070C16</color>
+</resources>
