@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Blocked by SENTINEL X</title>
+  <style>
+    body { background: #0a0a0f; color: #fff; font-family: system-ui; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .container { text-align: center; max-width: 500px; padding: 32px; }
+    .icon { font-size: 64px; color: #ff4444; }
+    h1 { color: #ff4444; }
+    .url { background: #111118; padding: 12px; border-radius: 4px; word-break: break-all; margin: 16px 0; border: 1px solid #1e1e2e; }
+    button { background: #00ff88; color: #000; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">⚠️</div>
+    <h1>Threat Blocked</h1>
+    <p>This website has been blocked by SENTINEL X due to security risks.</p>
+    <div class="url" id="url"></div>
+    <button onclick="history.back()">Go Back</button>
+  </div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    document.getElementById('url').textContent = params.get('url') || 'Unknown URL';
+  </script>
+</body>
+</html>

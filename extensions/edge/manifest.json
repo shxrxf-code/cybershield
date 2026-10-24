@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "SENTINEL X URL Protection",
+  "version": "0.1.0",
+  "description": "Real-time phishing and malicious URL protection by SENTINEL X",
+  "permissions": ["tabs", "webNavigation", "storage", "alarms"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SENTINEL X"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
