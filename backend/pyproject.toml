@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sentinelx-backend"
+name = "cybershield-backend"
 version = "0.1.0"
-description = "SENTINEL X Backend API"
+description = "CyberShield Cybersecurity Platform Backend API"
 requires-python = ">=3.10"
 dependencies = []
 

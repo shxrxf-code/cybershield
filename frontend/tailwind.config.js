@@ -8,14 +8,24 @@ export default {
   theme: {
     extend: {
       colors: {
+        cyber: {
+          bg: '#070a10',
+          card: '#111822',
+          border: '#293542',
+          primary: '#43f0a2',
+          danger: '#fb5268',
+          warning: '#f6b94a',
+          info: '#48c9f2',
+          accent: '#8b5cf6',
+        },
         sentinel: {
-          bg: '#0a0a0f',
-          card: '#111118',
-          border: '#1e1e2e',
-          primary: '#00ff88',
-          danger: '#ff4444',
-          warning: '#ffaa00',
-          info: '#00aaff',
+          bg: '#070a10',
+          card: '#111822',
+          border: '#293542',
+          primary: '#43f0a2',
+          danger: '#fb5268',
+          warning: '#f6b94a',
+          info: '#48c9f2',
         }
       }
     },

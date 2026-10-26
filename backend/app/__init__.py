@@ -1,1 +1,1 @@
-"""SENTINEL X Backend Application."""
+"""CyberShield Backend Application."""

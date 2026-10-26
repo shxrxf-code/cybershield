@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 #[derive(Parser)]
-#[command(name = "sentinelx-agent-linux")]
-#[command(about = "SENTINEL X Linux Endpoint Security Agent", long_about = None)]
+#[command(name = "cybershield-agent-linux")]
+#[command(about = "CyberShield Linux Endpoint Security Agent", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -71,7 +71,7 @@ async fn main() {
     let cli = Cli::parse();
     match cli.command {
         Commands::Scan { path } => {
-            println!("SENTINEL X Linux Agent - Scanning: {}", path.display());
+            println!("CyberShield Linux Agent - Scanning: {}", path.display());
             let mut count = 0;
             let mut suspicious = 0;
             for entry in WalkDir::new(&path).into_iter().filter_map(|e| e.ok()) {
@@ -94,7 +94,7 @@ async fn main() {
             }
         }
         Commands::Status => {
-            println!("SENTINEL X Linux Agent v0.1.0");
+            println!("CyberShield Linux Agent v1.0.0");
             println!("Status: Operational");
             println!("ClamAV integration: Available via clamscan");
             println!("Suricata: Available for network monitoring");

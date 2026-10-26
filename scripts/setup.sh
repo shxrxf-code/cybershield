@@ -1,6 +1,6 @@
 #!/bin/bash
-echo "SENTINEL X Setup"
-echo "================"
+echo "CyberShield Platform Setup"
+echo "=========================="
 echo "Python: $(python3 --version)"
 echo "Node: $(node --version 2>/dev/null || echo missing)"
 echo "Rust: $(cargo --version 2>/dev/null || echo missing)"

@@ -1,4 +1,4 @@
-# SENTINEL X windows Agent
+# CyberShield Windows Agent
 
 ## Platform: windows
 ## Status: Scaffolded (implementation depends on platform SDK availability)

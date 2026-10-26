@@ -1,2 +1,1 @@
-"""SENTINEL X shared core security engine."""
-__version__ = "0.1.0"
+"""CyberShield shared core security engine."""

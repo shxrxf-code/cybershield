@@ -1,4 +1,4 @@
-# SENTINEL X android Agent
+# CyberShield Android Agent
 
 ## Platform: android
 ## Status: Scaffolded (implementation depends on platform SDK availability)

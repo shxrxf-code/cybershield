@@ -1,4 +1,4 @@
-# SENTINEL X ios Agent
+# CyberShield iOS Agent
 
 ## Platform: ios
 ## Status: Scaffolded (implementation depends on platform SDK availability)

@@ -1,9 +1,9 @@
-# SENTINEL X
+# CyberShield
 
 Universal AI-Powered Cross-Platform Cybersecurity & Device Protection Platform.
 
 ## Overview
-SENTINEL X is a modular security ecosystem providing real-time threat detection, malware scanning, phishing prevention, network monitoring, application permission monitoring, email security, browser protection, and automated threat response across Android, iOS, Windows, macOS, Linux, and browser extensions. A shared core prioritizes functional security over UI polish.
+CyberShield is a modular security ecosystem providing real-time threat detection, malware scanning, phishing prevention, network monitoring, application permission monitoring, email security, browser protection, and automated threat response across Android, iOS, Windows, macOS, Linux, and browser extensions. A shared core prioritizes functional security capabilities and privacy over superficial UI.
 
 ## Architecture
 - `core/`: Shared security engine (detectors, scoring, intel, schemas, models) designed to be reusable by agents and backend.

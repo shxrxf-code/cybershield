@@ -1,5 +1,9 @@
 from fastapi import APIRouter
-from .routes import auth, devices, url, scan, threats, network, email, ai, quarantine, audit, reports, permissions, apk
+from .routes import (
+    auth, devices, url, scan, threats, network, email, ai,
+    quarantine, audit, reports, permissions, apk,
+    apps, browser, ransomware, vulnerabilities, settings
+)
 
 router = APIRouter()
 router.include_router(auth.router)
@@ -15,3 +19,8 @@ router.include_router(audit.router)
 router.include_router(reports.router)
 router.include_router(permissions.router)
 router.include_router(apk.router)
+router.include_router(apps.router)
+router.include_router(browser.router)
+router.include_router(ransomware.router)
+router.include_router(vulnerabilities.router)
+router.include_router(settings.router)

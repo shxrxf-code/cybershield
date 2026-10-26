@@ -1,4 +1,4 @@
-# SENTINEL X macos Agent
+# CyberShield macOS Agent
 
 ## Platform: macos
 ## Status: Scaffolded (implementation depends on platform SDK availability)

@@ -3,11 +3,11 @@ from typing import List
 import os
 
 class Settings(BaseSettings):
-    APP_NAME: str = "SENTINEL X"
-    SECRET_KEY: str = os.getenv("SENTINEL_SECRET_KEY", "change-me-in-production-use-env")
+    APP_NAME: str = "CyberShield"
+    SECRET_KEY: str = os.getenv("CYBERSHIELD_SECRET_KEY", os.getenv("SENTINEL_SECRET_KEY", "cybershield-secure-secret-key-prod-env"))
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./sentinelx.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./cybershield.db")
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
     VIRUSTOTAL_API_KEY: str = os.getenv("VIRUSTOTAL_API_KEY", "")

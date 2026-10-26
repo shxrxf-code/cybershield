@@ -1,4 +1,4 @@
-# SENTINEL X Linux Agent
+# CyberShield Linux Agent
 
 Functional prototype for Linux endpoint protection.
 
