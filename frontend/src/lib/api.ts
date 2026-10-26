@@ -44,6 +44,10 @@ export const scanAPI = {
   },
   scanHash: (file_hash: string, filename: string) => api.post('/scan/hash', { file_hash, filename }),
   status: () => api.get('/scan/status'),
+  refreshStatus: () => api.post('/scan/status/refresh'),
+  history: (params?: { search?: string; status?: string; limit?: number; offset?: number }) => api.get('/scan/history', { params }),
+  getReport: (id: string) => api.get(`/scan/history/${id}`),
+  clearHistory: () => api.delete('/scan/history'),
 }
 
 export const quarantineAPI = {

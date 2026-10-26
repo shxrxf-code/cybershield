@@ -16,6 +16,11 @@ class ScannedFile(Base):
     entropy = Column(Float, nullable=True)
     scan_engine = Column(String(50), default="clamav+yara+heuristic")  # clamav, yara, internal
     is_malicious = Column(Boolean, default=False)
+    status = Column(String(30), default="CLEAN")  # CLEAN, INFECTED, SUSPICIOUS, ERROR
+    threat_name = Column(String(255), nullable=True)
+    threat_severity = Column(String(20), default="low")  # low, moderate, high, critical, severe
+    duration_ms = Column(Integer, default=0)
+    recommended_action = Column(Text, nullable=True)
     detections = Column(JSON, default=list)
     risk_score = Column(Integer, default=0)
     action = Column(String(50), default="allow")  # allow, warn, quarantine, delete
