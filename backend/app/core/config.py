@@ -1,25 +1,37 @@
-from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 import os
+from pydantic_settings import BaseSettings
+from pydantic import Field
+
 
 class Settings(BaseSettings):
-    APP_NAME: str = "CyberShield"
-    SECRET_KEY: str = os.getenv("CYBERSHIELD_SECRET_KEY", os.getenv("SENTINEL_SECRET_KEY", "cybershield-secure-secret-key-prod-env"))
+    PROJECT_NAME: str = "ShieldGuard AI - Cybersecurity Engine"
+    API_V1_STR: str = "/api/v1"
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "super-secret-shieldguard-key-change-in-production-32bytes!")
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./cybershield.db")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
+    # Database & Cache
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/shieldguard")
+    DATABASE_URL_SYNC: str = os.getenv("DATABASE_URL_SYNC", "sqlite:///./shieldguard_dev.db")
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
-    VIRUSTOTAL_API_KEY: str = os.getenv("VIRUSTOTAL_API_KEY", "")
-    SAFE_BROWSING_API_KEY: str = os.getenv("SAFE_BROWSING_API_KEY", "")
-    ENABLE_CLAMAV: bool = True
-    CLAMAV_SOCKET: str = "/var/run/clamav/clamd.ctl"
-    QUARANTINE_PATH: str = os.getenv("QUARANTINE_PATH", "./quarantine")
-    AUDIT_LOG_ENABLED: bool = True
-    RATE_LIMIT_ENABLED: bool = True
+
+    # Threat Intelligence API Keys
+    VIRUSTOTAL_API_KEY: Optional[str] = os.getenv("VIRUSTOTAL_API_KEY", "")
+    ABUSEIPDB_API_KEY: Optional[str] = os.getenv("ABUSEIPDB_API_KEY", "")
+    ALIENVAULT_OTX_KEY: Optional[str] = os.getenv("ALIENVAULT_OTX_KEY", "")
+    PHISHTANK_API_KEY: Optional[str] = os.getenv("PHISHTANK_API_KEY", "")
+
+    # CORS
+    BACKEND_CORS_ORIGINS: List[str] = ["*"]
+
+    # Security Thresholds
+    RISK_SCORE_THRESHOLD_MALICIOUS: int = 75
+    RISK_SCORE_THRESHOLD_SUSPICIOUS: int = 40
 
     class Config:
         env_file = ".env"
         case_sensitive = True
+
 
 settings = Settings()
