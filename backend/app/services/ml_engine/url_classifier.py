@@ -1,9 +1,38 @@
 import re
 import math
-import tldextract
 from urllib.parse import urlparse
 from typing import Dict, Any, List, Tuple
 from difflib import SequenceMatcher
+
+try:
+    import tldextract
+except ImportError:
+    tldextract = None
+
+
+class DomainExtractFallback:
+    def __init__(self, domain: str, suffix: str, subdomain: str):
+        self.domain = domain
+        self.suffix = suffix
+        self.subdomain = subdomain
+
+
+def extract_domain_parts(url: str):
+    if tldextract:
+        return tldextract.extract(url)
+    # Standard library fallback
+    parsed = urlparse(url if "://" in url else "http://" + url)
+    host = parsed.netloc.split(":")[0]
+    parts = host.split(".")
+    if len(parts) >= 2:
+        suffix = parts[-1]
+        domain = parts[-2]
+        subdomain = ".".join(parts[:-2])
+    else:
+        suffix = ""
+        domain = host
+        subdomain = ""
+    return DomainExtractFallback(domain=domain, suffix=suffix, subdomain=subdomain)
 
 POPULAR_DOMAINS = [
     "google.com", "apple.com", "microsoft.com", "amazon.com", "paypal.com",
@@ -65,7 +94,7 @@ class URLFeatureExtractor:
             url = "http://" + url
 
         parsed = urlparse(url)
-        extracted = tldextract.extract(url)
+        extracted = extract_domain_parts(url)
         domain = f"{extracted.domain}.{extracted.suffix}" if extracted.suffix else extracted.domain
         subdomain = extracted.subdomain
         hostname = parsed.netloc or ""

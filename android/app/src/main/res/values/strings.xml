@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">ShieldGuard AI</string>
+    <string name="notification_service_label">ShieldGuard Notification Shield</string>
+    <string name="vpn_service_label">ShieldGuard Secure DNS &amp; VPN Tunnel</string>
+</resources>

@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  shieldguard-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shieldguard_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://shielduser:shieldsecurepass@postgres:5432/shieldguard_db
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=k92n4m80q1j28f9d0c2b7a6e5f4d3c2b1a0f9e8d7c6b5a4
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY}
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - shieldguard_net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: shieldguard_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: shielduser
+      POSTGRES_PASSWORD: shieldsecurepass
+      POSTGRES_DB: shieldguard_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shielduser -d shieldguard_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shieldguard_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: shieldguard_redis
+    restart: always
+    command: redis-server --appendonly yes --requirepass ""
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - shieldguard_net
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  shieldguard_net:
+    driver: bridge
