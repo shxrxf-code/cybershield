@@ -37,7 +37,8 @@ class ApkStaticScanner @Inject constructor(
         val scannedApps = mutableListOf<AppThreatInfo>()
 
         for (pkg in installed) {
-            val isSystem = (pkg.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            val appInfo = pkg.applicationInfo ?: continue
+            val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
             // Focus primarily on user-installed third party apps
             if (!isSystem || pkg.packageName.contains("updater") || pkg.packageName.contains("flash")) {
                 scannedApps.add(analyzePackage(pm, pkg))
@@ -47,10 +48,11 @@ class ApkStaticScanner @Inject constructor(
     }
 
     fun analyzePackage(pm: PackageManager, pkg: PackageInfo): AppThreatInfo {
-        val appName = pkg.applicationInfo.loadLabel(pm).toString()
+        val appInfo = pkg.applicationInfo
+        val appName = appInfo?.loadLabel(pm)?.toString() ?: pkg.packageName
         val permissions = pkg.requestedPermissions?.toList() ?: emptyList()
-        val isSystem = (pkg.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-        val isDebuggable = (pkg.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        val isSystem = ((appInfo?.flags ?: 0) and ApplicationInfo.FLAG_SYSTEM) != 0
+        val isDebuggable = ((appInfo?.flags ?: 0) and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
         val riskyPerms = mutableListOf<String>()
         val families = mutableListOf<String>()

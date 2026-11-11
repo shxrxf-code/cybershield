@@ -123,7 +123,7 @@ class DeviceIntegrityAuditor @Inject constructor(
         return try {
             val pm = context.packageManager
             val packages = pm.getInstalledPackages(0)
-            packages.count { (it.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 }
+            packages.count { (((it.applicationInfo?.flags) ?: 0) and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 }
                 .coerceAtMost(10)
         } catch (e: Exception) {
             0

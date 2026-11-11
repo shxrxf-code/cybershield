@@ -10,12 +10,14 @@ import com.shieldguard.ai.domain.repository.DeviceSecurityRepository
 import com.shieldguard.ai.domain.repository.ThreatRepository
 import com.shieldguard.ai.domain.usecase.AuditDeviceSecurityUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class DashboardUiState(
@@ -68,7 +70,9 @@ class DashboardViewModel @Inject constructor(
     fun performInitialAudit() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isScanning = true)
-            val audit = auditDeviceSecurityUseCase()
+            val audit = withContext(Dispatchers.IO) {
+                auditDeviceSecurityUseCase()
+            }
             _uiState.value = _uiState.value.copy(
                 isScanning = false,
                 deviceAudit = audit

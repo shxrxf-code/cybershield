@@ -30,15 +30,25 @@
     <application
         android:name=".ShieldGuardApp"
         android:allowBackup="false"
-        android:dataExtractionRules="@null"
-        android:fullBackupContent="false"
         android:icon="@android:drawable/ic_lock_lock"
         android:label="@string/app_name"
         android:roundIcon="@android:drawable/ic_lock_lock"
         android:supportsRtl="true"
         android:theme="@style/Theme.ShieldGuardAI"
-        android:networkSecurityConfig="@null"
+        android:usesCleartextTraffic="true"
         tools:targetApi="35">
+
+        <!-- Disable default WorkManager startup so HiltWorkerFactory Configuration.Provider is used -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
         <activity
             android:name=".MainActivity"
@@ -68,7 +78,11 @@
             android:name=".service.ShieldGuardVpnService"
             android:label="@string/vpn_service_label"
             android:permission="android.permission.BIND_VPN_SERVICE"
+            android:foregroundServiceType="specialUse"
             android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="VPN network packet filtering and DNS protection" />
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>

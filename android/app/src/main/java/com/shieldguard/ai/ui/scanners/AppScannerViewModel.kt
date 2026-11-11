@@ -7,10 +7,12 @@ import com.shieldguard.ai.domain.model.Verdict
 import com.shieldguard.ai.domain.usecase.ScanApkUseCase
 import com.shieldguard.ai.scanner.ApkStaticScanner
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class AppScannerUiState(
@@ -35,13 +37,14 @@ class AppScannerViewModel @Inject constructor(
     fun scanInstalledApplications() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isScanning = true)
-            val apps = apkStaticScanner.scanAllInstalledApps()
-
-            // Run through use case to persist any detected threats
-            for (app in apps) {
-                if (app.verdict != Verdict.SAFE) {
-                    scanApkUseCase(app)
+            val apps = withContext(Dispatchers.IO) {
+                val scanned = apkStaticScanner.scanAllInstalledApps()
+                for (app in scanned) {
+                    if (app.verdict != Verdict.SAFE) {
+                        scanApkUseCase(app)
+                    }
                 }
+                scanned
             }
 
             val flagged = apps.count { it.verdict != Verdict.SAFE }
