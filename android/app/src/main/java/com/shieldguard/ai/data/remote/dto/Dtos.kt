@@ -43,7 +43,19 @@ data class ApkScanResponseDto(
     @SerializedName("risky_permissions") val riskyPermissions: List<String>,
     @SerializedName("suspicious_behaviors") val suspiciousBehaviors: List<String>,
     @SerializedName("reputation_status") val reputationStatus: String,
-    @SerializedName("recommendation") val recommendation: String
+    @SerializedName("recommendation") val recommendation: String,
+    @SerializedName("analysis_engine") val analysisEngine: String = "heuristic",
+    @SerializedName("app_name") val appName: String? = null,
+    @SerializedName("version_name") val versionName: String? = null,
+    @SerializedName("min_sdk") val minSdk: String? = null,
+    @SerializedName("target_sdk") val targetSdk: String? = null,
+    @SerializedName("dex_count") val dexCount: Int = 0,
+    @SerializedName("cert_sha256") val certSha256: String? = null,
+    @SerializedName("cert_subject") val certSubject: String? = null,
+    @SerializedName("dangerous_apis") val dangerousApis: List<String> = emptyList(),
+    @SerializedName("native_libraries") val nativeLibraries: List<String> = emptyList(),
+    @SerializedName("embedded_urls") val embeddedUrls: List<String> = emptyList(),
+    @SerializedName("exported_components") val exportedComponents: List<String> = emptyList()
 )
 
 data class DocumentScanRequestDto(

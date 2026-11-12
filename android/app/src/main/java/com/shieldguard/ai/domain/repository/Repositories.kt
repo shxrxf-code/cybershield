@@ -12,6 +12,7 @@ interface ThreatRepository {
     fun getRecentThreats(limit: Int = 10): Flow<List<Threat>>
     suspend fun recordThreat(threat: Threat)
     suspend fun resolveThreat(threatId: String)
+    suspend fun clearThreatsByModule(moduleType: com.shieldguard.ai.domain.model.ModuleType)
     suspend fun clearThreats()
 }
 
@@ -27,4 +28,5 @@ interface DeviceSecurityRepository {
     suspend fun performDeviceAudit(): DeviceAudit
     fun getSecurityScore(): Flow<SecurityScore>
     suspend fun updateProtectionStatus(vpnEnabled: Boolean, notifEnabled: Boolean)
+    suspend fun updateScanMetrics(appsCount: Int, filesCount: Int, securityScore: Int)
 }

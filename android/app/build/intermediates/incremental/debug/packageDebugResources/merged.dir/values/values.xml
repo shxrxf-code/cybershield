@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent_cyan">#00E5FF</color>
+    <color name="card_dark">#1A2234</color>
+    <color name="primary_dark">#0A0F1D</color>
+    <color name="safe_green">#00E676</color>
+    <color name="surface_dark">#121826</color>
+    <color name="threat_crimson">#FF1744</color>
+    <color name="warning_amber">#FFD600</color>
+    <string name="app_name">ShieldGuard AI</string>
+    <string name="notification_service_label">ShieldGuard Notification Shield</string>
+    <string name="vpn_service_label">ShieldGuard Secure DNS &amp; VPN Tunnel</string>
+    <style name="Theme.ShieldGuardAI" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@color/primary_dark</item>
+        <item name="android:navigationBarColor">@color/primary_dark</item>
+        <item name="android:windowBackground">@color/primary_dark</item>
+    </style>
+</resources>

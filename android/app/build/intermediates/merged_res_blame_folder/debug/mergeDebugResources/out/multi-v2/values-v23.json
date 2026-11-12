@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.shieldguard.ai.app-mergeDebugResources-2:/values-v23/values-v23.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\sharaf\\.gradle\\caches\\transforms-4\\e1f5524bfd94fcc5f53f03df31a74e1b\\transformed\\work-runtime-2.9.1\\res\\values-v23\\values-v23.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,121",
+                        "endColumns": "65,62",
+                        "endOffsets": "116,179"
+                    }
+                }
+            ]
+        }
+    ]
+}

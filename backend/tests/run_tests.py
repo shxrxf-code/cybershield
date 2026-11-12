@@ -8,7 +8,7 @@ sys.path.insert(0, backend_dir)
 
 from app.services.ml_engine.url_classifier import url_classifier
 from app.services.ml_engine.sms_phishing_detector import sms_detector
-from app.services.scanner.apk_static_engine import apk_engine
+from app.services.scanner.apk_static_engine import ANDROGUARD_AVAILABLE, apk_engine
 from app.services.scanner.document_security_engine import document_engine
 from app.services.ml_engine.email_security_analyzer import email_analyzer
 from app.services.report_generator.report_engine import report_engine
@@ -123,6 +123,23 @@ class TestShieldGuardSecurityEngines(unittest.TestCase):
         ])
         self.assertIn("Test Phish", csv_data)
         self.assertIn("MALICIOUS", csv_data)
+
+    def test_androguard_available_and_invalid_bytes(self):
+        self.assertTrue(ANDROGUARD_AVAILABLE)
+        with self.assertRaises(ValueError):
+            apk_engine.analyze_apk_bytes(b"not-a-valid-apk-archive", "bad.apk")
+
+    def test_androguard_apk_binary_scan(self):
+        debug_apk = os.path.abspath(
+            os.path.join(backend_dir, "..", "android", "app", "build", "outputs", "apk", "debug", "app-debug.apk")
+        )
+        if not os.path.exists(debug_apk):
+            self.skipTest("app-debug.apk not present in workspace")
+        report = apk_engine.analyze_apk_file(debug_apk, is_trusted_store=False)
+        self.assertEqual(report["package_name"], "com.shieldguard.ai.debug")
+        self.assertEqual(report["analysis_engine"], "androguard-4.1.4")
+        self.assertGreater(report["dex_count"], 0)
+        self.assertIsNotNone(report["cert_sha256"])
 
 
 if __name__ == "__main__":

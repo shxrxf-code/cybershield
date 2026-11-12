@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "com.shieldguard.ai"
     compileSdk = 35
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = "com.shieldguard.ai"

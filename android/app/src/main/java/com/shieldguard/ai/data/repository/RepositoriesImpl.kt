@@ -21,8 +21,15 @@ import com.shieldguard.ai.domain.repository.ScannerRepository
 import com.shieldguard.ai.domain.repository.ThreatRepository
 import com.shieldguard.ai.scanner.DocumentSecurityScanner
 import com.shieldguard.ai.scanner.DeviceIntegrityAuditor
+import com.shieldguard.ai.scanner.LocalUrlThreatAnalyzer
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -47,6 +54,10 @@ class ThreatRepositoryImpl @Inject constructor(
         threatDao.deleteThreat(threatId)
     }
 
+    override suspend fun clearThreatsByModule(moduleType: ModuleType) {
+        threatDao.deleteThreatsByModule(moduleType.name)
+    }
+
     override suspend fun clearThreats() {
         threatDao.clearAllThreats()
     }
@@ -56,21 +67,24 @@ class ThreatRepositoryImpl @Inject constructor(
 class ScannerRepositoryImpl @Inject constructor(
     private val apiService: ShieldGuardApiService,
     private val documentSecurityScanner: DocumentSecurityScanner,
+    private val localUrlThreatAnalyzer: LocalUrlThreatAnalyzer,
     private val scanHistoryDao: ScanHistoryDao,
     private val preferencesManager: EncryptedPreferencesManager
 ) : ScannerRepository {
 
     override suspend fun scanUrl(url: String, deepAnalysis: Boolean): Result<Threat> = runCatching {
-        val response = apiService.scanUrl(
-            UrlScanRequestDto(
-                url = url,
-                deviceUuid = preferencesManager.getDeviceUuid(),
-                deepAnalysis = deepAnalysis
+        val remoteResponse = runCatching {
+            apiService.scanUrl(
+                UrlScanRequestDto(
+                    url = url,
+                    deviceUuid = preferencesManager.getDeviceUuid(),
+                    deepAnalysis = deepAnalysis
+                )
             )
-        )
+        }.getOrNull()
 
-        if (response.isSuccessful && response.body() != null) {
-            val body = response.body()!!
+        if (remoteResponse != null && remoteResponse.isSuccessful && remoteResponse.body() != null) {
+            val body = remoteResponse.body()!!
             val verdict = runCatching { Verdict.valueOf(body.verdict) }.getOrDefault(Verdict.SAFE)
             val threatLevel = runCatching { ThreatLevel.valueOf(body.threatLevel) }.getOrDefault(ThreatLevel.LOW)
             Threat(
@@ -87,34 +101,49 @@ class ScannerRepositoryImpl @Inject constructor(
                 timestampMs = System.currentTimeMillis()
             )
         } else {
-            // Local fallback classification
-            Threat(
-                id = UUID.randomUUID().toString(),
-                moduleType = ModuleType.URL,
-                threatLevel = ThreatLevel.LOW,
-                verdict = Verdict.SAFE,
-                riskScore = 10,
-                title = "Clean URL (Offline Verification)",
-                description = "Offline heuristic check passed.",
-                actionTaken = "ALLOWED",
-                rawPayload = url,
-                indicators = emptyList(),
-                timestampMs = System.currentTimeMillis()
-            )
+            // Full local heuristic URL classifier fallback when backend is offline
+            localUrlThreatAnalyzer.analyzeUrl(url)
         }
     }
 
     override suspend fun scanApk(packageInfo: AppThreatInfo): Result<AppThreatInfo> = runCatching {
-        val response = apiService.scanApk(
-            ApkScanRequestDto(
-                packageName = packageInfo.packageName,
-                appName = packageInfo.appName,
-                versionCode = packageInfo.versionCode,
-                permissions = packageInfo.dangerousPermissions,
-                usesAccessibility = packageInfo.behaviors.any { it.contains("Accessibility") },
-                usesOverlay = packageInfo.behaviors.any { it.contains("Overlay") }
+        val maxUploadBytes = 100L * 1024L * 1024L // 100 MB sync limit
+        val apkFile = packageInfo.apkPath?.let { File(it) }
+
+        val response = if (apkFile != null && apkFile.exists() && apkFile.canRead() && apkFile.length() in 1L..maxUploadBytes) {
+            val apkPart = MultipartBody.Part.createFormData(
+                name = "file",
+                filename = "${packageInfo.packageName}.apk",
+                body = apkFile.asRequestBody("application/vnd.android.package-archive".toMediaType())
             )
-        )
+            val trustedBody = packageInfo.isTrustedStore.toString().toRequestBody("text/plain".toMediaType())
+            val binaryResp = runCatching { apiService.scanApkFile(apkPart, trustedBody) }.getOrNull()
+            if (binaryResp != null && binaryResp.isSuccessful && binaryResp.body() != null) {
+                binaryResp
+            } else {
+                apiService.scanApk(
+                    ApkScanRequestDto(
+                        packageName = packageInfo.packageName,
+                        appName = packageInfo.appName,
+                        versionCode = packageInfo.versionCode,
+                        permissions = packageInfo.dangerousPermissions,
+                        usesAccessibility = packageInfo.behaviors.any { it.contains("Accessibility") },
+                        usesOverlay = packageInfo.behaviors.any { it.contains("Overlay") }
+                    )
+                )
+            }
+        } else {
+            apiService.scanApk(
+                ApkScanRequestDto(
+                    packageName = packageInfo.packageName,
+                    appName = packageInfo.appName,
+                    versionCode = packageInfo.versionCode,
+                    permissions = packageInfo.dangerousPermissions,
+                    usesAccessibility = packageInfo.behaviors.any { it.contains("Accessibility") },
+                    usesOverlay = packageInfo.behaviors.any { it.contains("Overlay") }
+                )
+            )
+        }
 
         if (response.isSuccessful && response.body() != null) {
             val body = response.body()!!
@@ -122,8 +151,20 @@ class ScannerRepositoryImpl @Inject constructor(
                 verdict = runCatching { Verdict.valueOf(body.verdict) }.getOrDefault(packageInfo.verdict),
                 riskScore = body.riskScore,
                 threatLevel = runCatching { ThreatLevel.valueOf(body.threatLevel) }.getOrDefault(packageInfo.threatLevel),
+                dangerousPermissions = if (body.riskyPermissions.isNotEmpty()) {
+                    body.riskyPermissions.map { it.substringAfterLast(".") }.distinct()
+                } else {
+                    packageInfo.dangerousPermissions
+                },
                 malwareFamilies = body.detectedFamilies,
-                recommendation = body.recommendation
+                behaviors = if (body.suspiciousBehaviors.isNotEmpty()) body.suspiciousBehaviors else packageInfo.behaviors,
+                recommendation = body.recommendation,
+                analysisEngine = body.analysisEngine,
+                certSha256 = body.certSha256,
+                dexCount = body.dexCount,
+                dangerousApis = body.dangerousApis,
+                nativeLibraries = body.nativeLibraries,
+                embeddedUrls = body.embeddedUrls
             )
         } else {
             packageInfo
@@ -176,14 +217,17 @@ class DeviceSecurityRepositoryImpl @Inject constructor(
     private val preferencesManager: EncryptedPreferencesManager
 ) : DeviceSecurityRepository {
 
+    private val refreshTrigger = MutableStateFlow(0)
+
     override suspend fun performDeviceAudit(): DeviceAudit {
         val audit = auditor.auditDevice()
         preferencesManager.setCachedSecurityScore(audit.securityScore)
+        refreshTrigger.value++
         return audit
     }
 
     override fun getSecurityScore(): Flow<SecurityScore> {
-        return threatDao.getThreatsCount().map { threatCount ->
+        return combine(threatDao.getThreatsCount(), refreshTrigger) { threatCount, _ ->
             val cachedScore = preferencesManager.getCachedSecurityScore()
             val adjustedScore = (cachedScore - (threatCount * 5)).coerceIn(0, 100)
             val level = when {
@@ -196,8 +240,8 @@ class DeviceSecurityRepositoryImpl @Inject constructor(
                 overallScore = adjustedScore,
                 threatLevel = level,
                 activeThreatsCount = threatCount,
-                scannedAppsCount = 124,
-                scannedFilesCount = 890,
+                scannedAppsCount = preferencesManager.getScannedAppsCount(),
+                scannedFilesCount = preferencesManager.getScannedFilesCount(),
                 networkProtected = preferencesManager.isVpnProtectionEnabled(),
                 notificationShieldActive = preferencesManager.isNotificationMonitorEnabled()
             )
@@ -207,5 +251,13 @@ class DeviceSecurityRepositoryImpl @Inject constructor(
     override suspend fun updateProtectionStatus(vpnEnabled: Boolean, notifEnabled: Boolean) {
         preferencesManager.setVpnProtectionEnabled(vpnEnabled)
         preferencesManager.setNotificationMonitorEnabled(notifEnabled)
+        refreshTrigger.value++
+    }
+
+    override suspend fun updateScanMetrics(appsCount: Int, filesCount: Int, securityScore: Int) {
+        preferencesManager.setScannedAppsCount(appsCount)
+        preferencesManager.setScannedFilesCount(filesCount)
+        preferencesManager.setCachedSecurityScore(securityScore)
+        refreshTrigger.value++
     }
 }

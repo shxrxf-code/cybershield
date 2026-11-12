@@ -1,0 +1,13 @@
+R_DEF: Internal format may change without notice
+local
+color accent_cyan
+color card_dark
+color primary_dark
+color safe_green
+color surface_dark
+color threat_crimson
+color warning_amber
+string app_name
+string notification_service_label
+string vpn_service_label
+style Theme.ShieldGuardAI

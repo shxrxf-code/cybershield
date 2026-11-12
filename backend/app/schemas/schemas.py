@@ -68,6 +68,18 @@ class ApkMalwareReport(BaseModel):
     suspicious_behaviors: List[str] = []
     reputation_status: str
     recommendation: str
+    analysis_engine: str = "heuristic"
+    app_name: Optional[str] = None
+    version_name: Optional[str] = None
+    min_sdk: Optional[str] = None
+    target_sdk: Optional[str] = None
+    dex_count: int = 0
+    cert_sha256: Optional[str] = None
+    cert_subject: Optional[str] = None
+    dangerous_apis: List[str] = []
+    native_libraries: List[str] = []
+    embedded_urls: List[str] = []
+    exported_components: List[str] = []
 
 
 # ----------------------------------------------------

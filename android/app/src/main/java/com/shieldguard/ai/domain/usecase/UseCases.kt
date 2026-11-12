@@ -10,6 +10,9 @@ import com.shieldguard.ai.domain.model.Verdict
 import com.shieldguard.ai.domain.repository.DeviceSecurityRepository
 import com.shieldguard.ai.domain.repository.ScannerRepository
 import com.shieldguard.ai.domain.repository.ThreatRepository
+import com.shieldguard.ai.scanner.LocalUrlThreatAnalyzer
+import com.shieldguard.ai.service.NotificationMonitorHub
+import com.shieldguard.ai.service.ScannedNotificationEvent
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 import javax.inject.Inject
@@ -83,7 +86,9 @@ class AuditDeviceSecurityUseCase @Inject constructor(
 
 class ProcessNotificationUseCase @Inject constructor(
     private val threatRepository: ThreatRepository,
-    private val scanUrlUseCase: ScanUrlUseCase
+    private val scanUrlUseCase: ScanUrlUseCase,
+    private val localUrlThreatAnalyzer: LocalUrlThreatAnalyzer,
+    private val notificationMonitorHub: NotificationMonitorHub
 ) {
     suspend operator fun invoke(
         packageName: String,
@@ -91,57 +96,76 @@ class ProcessNotificationUseCase @Inject constructor(
         title: String,
         text: String
     ): Threat? {
-        val combined = "$title $text".lowercase()
+        val combined = "$title\n$text"
+        val combinedLower = combined.lowercase()
         var riskScore = 0
         var threatType: String? = null
         val indicators = mutableListOf<String>()
 
         // 1. Phishing & Scam Lures Detection
-        if (combined.contains("winner") || combined.contains("lottery") || combined.contains("won $") || combined.contains("claim prize")) {
+        if (combinedLower.contains("winner") || combinedLower.contains("lottery") || combinedLower.contains("won $") || combinedLower.contains("claim prize")) {
             riskScore += 45
             threatType = "Fake Giveaway / Lottery Scam"
             indicators.add("Lottery lure pattern detected")
         }
 
-        if (combined.contains("bitcoin") || combined.contains("crypto giveaway") || combined.contains("airdrop") || combined.contains("usdt")) {
+        if (combinedLower.contains("bitcoin") || combinedLower.contains("crypto giveaway") || combinedLower.contains("airdrop") || combinedLower.contains("usdt")) {
             riskScore += 50
             threatType = "Cryptocurrency Scam"
             indicators.add("Crypto drain lure pattern detected")
         }
 
-        if (combined.contains("suspended") || combined.contains("bank") || combined.contains("unauthorized transaction") || combined.contains("otp")) {
+        if (combinedLower.contains("suspended") || combinedLower.contains("bank") || combinedLower.contains("unauthorized transaction") || combinedLower.contains("otp")) {
             riskScore += 45
             threatType = "Banking Smishing / Social Engineering"
             indicators.add("Banking urgency pattern detected")
         }
 
-        // 2. Extract and evaluate URLs
-        val urlRegex = Regex("""https?://[^\s]+""")
-        val urls = urlRegex.findAll(combined).map { it.value }.toList()
+        // 2. Extract and evaluate ALL URLs (including MessagingStyle chats & scheme-less domains)
+        val urls = localUrlThreatAnalyzer.extractUrls(combined)
         for (url in urls) {
             val urlRes = scanUrlUseCase(url)
             urlRes.onSuccess { threat ->
                 if (threat.verdict != Verdict.SAFE) {
                     riskScore = maxOf(riskScore, threat.riskScore)
-                    threatType = "Malicious Link in Message"
-                    indicators.add("Contains flagged URL: $url")
+                    threatType = if (threat.verdict == Verdict.MALICIOUS) "Malicious Link in Chat" else "Suspicious Link in Chat"
+                    indicators.add("Flagged URL ($url): ${threat.description}")
                 }
             }
         }
 
+        val finalVerdict = when {
+            riskScore >= 70 -> Verdict.MALICIOUS
+            riskScore >= 35 -> Verdict.SUSPICIOUS
+            else -> Verdict.SAFE
+        }
+
+        notificationMonitorHub.recordNotification(
+            ScannedNotificationEvent(
+                id = UUID.randomUUID().toString(),
+                packageName = packageName,
+                appLabel = appLabel,
+                senderOrTitle = title.ifBlank { appLabel },
+                messageSnippet = text.take(140),
+                detectedUrls = urls,
+                verdict = finalVerdict,
+                riskScore = riskScore,
+                timestampMs = System.currentTimeMillis()
+            )
+        )
+
         if (riskScore >= 35) {
             val threatLevel = if (riskScore >= 75) ThreatLevel.CRITICAL else ThreatLevel.HIGH
-            val verdict = if (riskScore >= 70) Verdict.MALICIOUS else Verdict.SUSPICIOUS
             val threat = Threat(
                 id = UUID.randomUUID().toString(),
                 moduleType = ModuleType.NOTIFICATION,
                 threatLevel = threatLevel,
-                verdict = verdict,
+                verdict = finalVerdict,
                 riskScore = riskScore,
-                title = "$threatType ($appLabel)",
-                description = "Suspicious message intercepted from $appLabel: \"${text.take(60)}...\"",
-                actionTaken = "BLOCKED",
-                rawPayload = text,
+                title = "${threatType ?: "Suspicious Message"} ($appLabel)",
+                description = "Intercepted from $appLabel: \"${text.take(80)}\"",
+                actionTaken = if (finalVerdict == Verdict.MALICIOUS) "BLOCKED_ALERT" else "WARNED",
+                rawPayload = if (urls.isNotEmpty()) urls.joinToString(", ") else text,
                 indicators = indicators,
                 timestampMs = System.currentTimeMillis()
             )

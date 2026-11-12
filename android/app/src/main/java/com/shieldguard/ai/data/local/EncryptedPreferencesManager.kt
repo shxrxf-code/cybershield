@@ -34,6 +34,8 @@ class EncryptedPreferencesManager @Inject constructor(
         private const val KEY_NOTIF_MONITOR_ACTIVE = "key_notif_monitor_active"
         private const val KEY_AUTO_QUARANTINE = "key_auto_quarantine"
         private const val KEY_SECURITY_SCORE = "key_security_score"
+        private const val KEY_SCANNED_APPS_COUNT = "key_scanned_apps_count"
+        private const val KEY_SCANNED_FILES_COUNT = "key_scanned_files_count"
     }
 
     fun getDeviceUuid(): String {
@@ -83,5 +85,21 @@ class EncryptedPreferencesManager @Inject constructor(
 
     fun setCachedSecurityScore(score: Int) {
         sharedPreferences.edit().putInt(KEY_SECURITY_SCORE, score).apply()
+    }
+
+    fun getScannedAppsCount(): Int {
+        return sharedPreferences.getInt(KEY_SCANNED_APPS_COUNT, 0)
+    }
+
+    fun setScannedAppsCount(count: Int) {
+        sharedPreferences.edit().putInt(KEY_SCANNED_APPS_COUNT, count).apply()
+    }
+
+    fun getScannedFilesCount(): Int {
+        return sharedPreferences.getInt(KEY_SCANNED_FILES_COUNT, 0)
+    }
+
+    fun setScannedFilesCount(count: Int) {
+        sharedPreferences.edit().putInt(KEY_SCANNED_FILES_COUNT, count).apply()
     }
 }

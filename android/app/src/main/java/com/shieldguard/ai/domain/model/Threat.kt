@@ -60,5 +60,13 @@ data class AppThreatInfo(
     val dangerousPermissions: List<String>,
     val malwareFamilies: List<String>,
     val behaviors: List<String>,
-    val recommendation: String
+    val recommendation: String,
+    val apkPath: String? = null,
+    val isTrustedStore: Boolean = false,
+    val analysisEngine: String = "Local Heuristic",
+    val certSha256: String? = null,
+    val dexCount: Int = 0,
+    val dangerousApis: List<String> = emptyList(),
+    val nativeLibraries: List<String> = emptyList(),
+    val embeddedUrls: List<String> = emptyList()
 )

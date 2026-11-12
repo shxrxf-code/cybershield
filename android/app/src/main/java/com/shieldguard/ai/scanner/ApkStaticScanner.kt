@@ -17,31 +17,67 @@ class ApkStaticScanner @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
-    private val dangerousPermissionsMap = mapOf(
-        "android.permission.BIND_ACCESSIBILITY_SERVICE" to 30,
-        "android.permission.SYSTEM_ALERT_WINDOW" to 25,
-        "android.permission.REQUEST_INSTALL_PACKAGES" to 20,
-        "android.permission.SEND_SMS" to 20,
-        "android.permission.RECEIVE_SMS" to 20,
-        "android.permission.READ_SMS" to 20,
-        "android.permission.RECORD_AUDIO" to 15,
-        "android.permission.CAMERA" to 10,
-        "android.permission.ACCESS_FINE_LOCATION" to 10,
-        "android.permission.READ_CONTACTS" to 10,
-        "android.permission.BIND_DEVICE_ADMIN" to 30
+    private val trustedStoreInstallers = setOf(
+        "com.android.vending",           // Google Play Store
+        "com.heytap.market",             // OPPO / OnePlus App Market
+        "com.oppo.market",
+        "com.oplus.sau",                 // Oplus System App Updater
+        "com.oplus.exsystemservice",
+        "com.sec.android.app.samsungapps",
+        "com.xiaomi.market",
+        "com.amazon.venezia"
     )
 
-    fun scanAllInstalledApps(): List<AppThreatInfo> {
+    private val trustedOemPrefixes = listOf(
+        "com.coloros.",
+        "com.oplus.",
+        "com.oppo.",
+        "com.heytap.",
+        "com.nearme.",
+        "com.google.android."
+    )
+
+    private val highRiskAbusePermissions = mapOf(
+        "android.permission.BIND_ACCESSIBILITY_SERVICE" to 30,
+        "android.permission.BIND_DEVICE_ADMIN" to 30,
+        "android.permission.SYSTEM_ALERT_WINDOW" to 20,
+        "android.permission.REQUEST_INSTALL_PACKAGES" to 20,
+        "android.permission.SEND_SMS" to 20,
+        "android.permission.RECEIVE_SMS" to 15,
+        "android.permission.READ_SMS" to 15,
+        "android.permission.READ_CALL_LOG" to 15
+    )
+
+    private val standardRuntimePermissions = mapOf(
+        "android.permission.RECORD_AUDIO" to 4,
+        "android.permission.CAMERA" to 3,
+        "android.permission.ACCESS_FINE_LOCATION" to 3,
+        "android.permission.READ_CONTACTS" to 3
+    )
+
+    fun scanAllInstalledApps(
+        includeSystemApps: Boolean = false,
+        onProgress: ((current: Int, total: Int, appName: String) -> Unit)? = null
+    ): List<AppThreatInfo> {
         val pm = context.packageManager
         val installed = pm.getInstalledPackages(PackageManager.GET_PERMISSIONS)
         val scannedApps = mutableListOf<AppThreatInfo>()
 
-        for (pkg in installed) {
-            val appInfo = pkg.applicationInfo ?: continue
+        val targets = installed.filter { pkg ->
+            if (pkg.packageName == context.packageName) return@filter false
+            if (includeSystemApps) return@filter true
+            val appInfo = pkg.applicationInfo ?: return@filter false
             val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-            // Focus primarily on user-installed third party apps
-            if (!isSystem || pkg.packageName.contains("updater") || pkg.packageName.contains("flash")) {
-                scannedApps.add(analyzePackage(pm, pkg))
+            val isUpdatedSystem = (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+            !isSystem && !isUpdatedSystem
+        }
+
+        val total = targets.size
+        targets.forEachIndexed { index, pkg ->
+            val info = analyzePackage(pm, pkg)
+            scannedApps.add(info)
+            if (onProgress != null && (index % 5 == 0 || index == total - 1)) {
+                onProgress(index + 1, total, info.appName)
             }
         }
         return scannedApps.sortedByDescending { it.riskScore }
@@ -51,56 +87,113 @@ class ApkStaticScanner @Inject constructor(
         val appInfo = pkg.applicationInfo
         val appName = appInfo?.loadLabel(pm)?.toString() ?: pkg.packageName
         val permissions = pkg.requestedPermissions?.toList() ?: emptyList()
+        val permissionFlags = pkg.requestedPermissionsFlags
         val isSystem = ((appInfo?.flags ?: 0) and ApplicationInfo.FLAG_SYSTEM) != 0
         val isDebuggable = ((appInfo?.flags ?: 0) and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+
+        val installerPkg = getInstallerPackage(pm, pkg.packageName)
+        val isFromTrustedStore = installerPkg in trustedStoreInstallers
+        val isTrustedOemPkg = trustedOemPrefixes.any { pkg.packageName.startsWith(it) }
+
+        val grantedPermissions = mutableSetOf<String>()
+        permissions.forEachIndexed { index, perm ->
+            val isGranted = if (permissionFlags != null && index < permissionFlags.size) {
+                (permissionFlags[index] and PackageInfo.REQUESTED_PERMISSION_GRANTED) != 0
+            } else {
+                false
+            }
+            if (isGranted) grantedPermissions.add(perm)
+        }
 
         val riskyPerms = mutableListOf<String>()
         val families = mutableListOf<String>()
         val behaviors = mutableListOf<String>()
         var score = 0
 
-        // 1. Permission scoring
-        for (perm in permissions) {
-            dangerousPermissionsMap[perm]?.let { weight ->
-                score += weight
+        // 1. Origin / Sideload evaluation
+        if (!isFromTrustedStore && !isTrustedOemPkg && !isSystem) {
+            score += 20
+            behaviors.add("Sideloaded app (not installed via Google Play or OEM store)")
+        }
+
+        // 2. High-risk special permissions (evaluated strictly if granted or sideloaded)
+        var highRiskScore = 0
+        for ((perm, weight) in highRiskAbusePermissions) {
+            if (permissions.contains(perm)) {
+                val isGranted = grantedPermissions.contains(perm)
+                if (isGranted || !isFromTrustedStore) {
+                    highRiskScore += if (isGranted) weight else (weight / 2)
+                    riskyPerms.add(perm.substringAfterLast("."))
+                }
+            }
+        }
+        score += highRiskScore.coerceAtMost(45)
+
+        // 3. Standard consumer runtime permissions (never push Play Store apps into suspicious/malicious)
+        var runtimeScore = 0
+        for ((perm, weight) in standardRuntimePermissions) {
+            if (grantedPermissions.contains(perm)) {
+                runtimeScore += weight
                 riskyPerms.add(perm.substringAfterLast("."))
             }
         }
+        score += runtimeScore.coerceAtMost(12)
 
-        // 2. Behavioral combination heuristics
-        val hasAccessibility = permissions.contains("android.permission.BIND_ACCESSIBILITY_SERVICE")
-        val hasOverlay = permissions.contains("android.permission.SYSTEM_ALERT_WINDOW")
-        val hasSms = permissions.any { it.contains("SMS") }
+        // 4. Severe Malware Family Combination Signatures
+        val hasAccessibility = permissions.contains("android.permission.BIND_ACCESSIBILITY_SERVICE") &&
+            (grantedPermissions.contains("android.permission.BIND_ACCESSIBILITY_SERVICE") || !isFromTrustedStore)
+        val hasOverlay = grantedPermissions.contains("android.permission.SYSTEM_ALERT_WINDOW") ||
+            (!isFromTrustedStore && permissions.contains("android.permission.SYSTEM_ALERT_WINDOW"))
+        val hasSms = permissions.any {
+            it == "android.permission.SEND_SMS" || it == "android.permission.RECEIVE_SMS" || it == "android.permission.READ_SMS"
+        } && (grantedPermissions.any { it.contains("SMS") } || !isFromTrustedStore)
 
-        if (hasAccessibility && hasOverlay && hasSms) {
+        // Banking Trojan: Accessibility + Overlay + SMS
+        if (hasAccessibility && hasOverlay && hasSms && !isTrustedOemPkg) {
             score += 45
             families.add("Banking Trojan (Overlay & Keystroke Interception)")
-            behaviors.add("High Risk: Combines Accessibility Service, Screen Overlay, and SMS Interception")
-        } else if (hasAccessibility && hasOverlay) {
-            score += 30
-            behaviors.add("Suspicious: Simultaneous Accessibility Service and Screen Overlay permission")
+            behaviors.add("Combines Accessibility Service, Screen Overlay, and SMS Interception")
         }
 
-        // Spyware detection
-        val hasAudio = permissions.contains("android.permission.RECORD_AUDIO")
-        val hasLoc = permissions.contains("android.permission.ACCESS_FINE_LOCATION")
-        val hasContacts = permissions.contains("android.permission.READ_CONTACTS")
-        if (hasAudio && hasLoc && hasContacts && !isSystem) {
-            score += 35
-            families.add("Spyware / Commercial Surveillance")
-            behaviors.add("Full sensory and identity access (Mic, Location, Contacts)")
-        }
+        // Spyware: Sideloaded app with granted mic + location + contacts + (SMS or Call Log)
+        val hasAudio = grantedPermissions.contains("android.permission.RECORD_AUDIO")
+        val hasLoc = grantedPermissions.contains("android.permission.ACCESS_FINE_LOCATION")
+        val hasContacts = grantedPermissions.contains("android.permission.READ_CONTACTS")
+        val hasSensitiveComms = grantedPermissions.contains("android.permission.READ_SMS") ||
+            grantedPermissions.contains("android.permission.READ_CALL_LOG")
 
-        // Ransomware detection
-        if (permissions.contains("android.permission.BIND_DEVICE_ADMIN") && hasOverlay) {
+        if (!isFromTrustedStore && !isTrustedOemPkg && hasAudio && hasLoc && hasContacts && hasSensitiveComms) {
             score += 40
+            families.add("Spyware / Commercial Surveillance")
+            behaviors.add("Sideloaded app granted extensive microphone, location, contacts, and message/call access")
+        }
+
+        // Ransomware: Device Admin + Screen Overlay
+        val hasDeviceAdmin = permissions.contains("android.permission.BIND_DEVICE_ADMIN")
+        if (hasDeviceAdmin && hasOverlay && !isTrustedOemPkg) {
+            score += 45
             families.add("Ransomware / ScreenLocker")
             behaviors.add("Device Administrator binding combined with overlay capabilities")
         }
 
-        if (isDebuggable && !isSystem) {
-            score += 15
-            behaviors.add("Debuggable build flag enabled in production package")
+        // Debuggable build on non-system package
+        if (isDebuggable && !isSystem && !isFromTrustedStore) {
+            score += 20
+            behaviors.add("Debuggable flag enabled in sideloaded package")
+        }
+
+        // Known suspicious package naming patterns (only for untrusted installs)
+        if (!isFromTrustedStore && !isTrustedOemPkg &&
+            listOf("hack", "crack", "modapk", "cheat", "spy", "stealer").any { pkg.packageName.lowercase().contains(it) }
+        ) {
+            score += 30
+            families.add("Trojan / Repackaged Mod")
+            behaviors.add("Package identifier matches high-risk trojan/mod pattern")
+        }
+
+        // Apply Play Store / Trusted OEM calibration cap unless an explicit malware family was triggered
+        if ((isFromTrustedStore || isTrustedOemPkg) && families.isEmpty()) {
+            score = score.coerceAtMost(25)
         }
 
         score = score.coerceIn(0, 100)
@@ -120,8 +213,8 @@ class ApkStaticScanner @Inject constructor(
 
         val recommendation = when (verdict) {
             Verdict.MALICIOUS -> "IMMEDIATE UNINSTALLATION RECOMMENDED. App exhibits high-risk malware patterns."
-            Verdict.SUSPICIOUS -> "Review application permissions. Consider revoking Accessibility or Overlay."
-            Verdict.SAFE -> "Permissions align with standard application posture."
+            Verdict.SUSPICIOUS -> "Review application origin and sensitive permissions."
+            Verdict.SAFE -> if (isFromTrustedStore) "Verified store installation ($installerPkg). Clean posture." else "No active malware indicators found."
         }
 
         val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -139,10 +232,25 @@ class ApkStaticScanner @Inject constructor(
             verdict = verdict,
             riskScore = score,
             threatLevel = threatLevel,
-            dangerousPermissions = riskyPerms,
-            malwareFamilies = families,
+            dangerousPermissions = riskyPerms.distinct(),
+            malwareFamilies = families.distinct(),
             behaviors = behaviors,
-            recommendation = recommendation
+            recommendation = recommendation,
+            apkPath = appInfo?.publicSourceDir ?: appInfo?.sourceDir,
+            isTrustedStore = isFromTrustedStore || isTrustedOemPkg
         )
+    }
+
+    private fun getInstallerPackage(pm: PackageManager, packageName: String): String? {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                pm.getInstallSourceInfo(packageName).installingPackageName
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getInstallerPackageName(packageName)
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 }

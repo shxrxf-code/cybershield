@@ -22,6 +22,9 @@ interface ThreatDao {
     @Query("DELETE FROM threats WHERE id = :threatId")
     suspend fun deleteThreat(threatId: String)
 
+    @Query("DELETE FROM threats WHERE moduleType = :moduleType")
+    suspend fun deleteThreatsByModule(moduleType: String)
+
     @Query("DELETE FROM threats")
     suspend fun clearAllThreats()
 
